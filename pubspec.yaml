@@ -61,6 +61,8 @@ flutter:
     - assets/facebook_icon.png
     - assets/apple_icon.png
     - assets/login_illustration.png
+    - assets/pasta.jpg
+    - assets/steak.jpg
 
   # To add assets to your application, add an assets section, like this:
   # assets:
