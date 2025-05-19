@@ -12,7 +12,18 @@ class ProfileApp extends StatelessWidget {
   }
 }
 
-class UserProfilePage extends StatelessWidget {
+class UserProfilePage extends StatefulWidget {
+  @override
+  _UserProfilePageState createState() => _UserProfilePageState();
+}
+
+class _UserProfilePageState extends State<UserProfilePage> {
+  String restaurantName = "5 Star Restaurant";
+  String description =
+      "A 5 Star Restaurant specializes in western and comfort food.\n"
+      "Whatsapp: +6012345678\n"
+      "Email: restaurant@gmail.com";
+
   final List<String> imagePaths = [
     'assets/pasta.jpg',
     'assets/pasta.jpg',
@@ -21,6 +32,54 @@ class UserProfilePage extends StatelessWidget {
     'assets/pasta.jpg',
     'assets/pasta.jpg',
   ];
+
+  void _showEditDialog() {
+    TextEditingController nameController =
+        TextEditingController(text: restaurantName);
+    TextEditingController descriptionController =
+        TextEditingController(text: description);
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text('Edit Restaurant Profile'),
+          content: SingleChildScrollView(
+            child: Column(
+              children: [
+                TextField(
+                  controller: nameController,
+                  decoration: InputDecoration(labelText: 'Restaurant Name'),
+                ),
+                SizedBox(height: 10),
+                TextField(
+                  controller: descriptionController,
+                  maxLines: 4,
+                  decoration: InputDecoration(labelText: 'Description'),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              child: Text('Cancel'),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+            ElevatedButton(
+              child: Text('Save'),
+              onPressed: () {
+                setState(() {
+                  restaurantName = nameController.text;
+                  description = descriptionController.text;
+                });
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -43,7 +102,7 @@ class UserProfilePage extends StatelessWidget {
             Stack(
               children: [
                 Image.asset(
-                  'assets/pasta.jpg', // Use real banner image
+                  'assets/pasta.jpg',
                   height: 200,
                   width: double.infinity,
                   fit: BoxFit.cover,
@@ -58,20 +117,14 @@ class UserProfilePage extends StatelessWidget {
             Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                // Profile Picture
                 Padding(
                   padding: const EdgeInsets.all(16.0),
                   child: CircleAvatar(
                     radius: 40,
-                    backgroundImage:
-                        AssetImage('assets/pasta.jpg'), // your profile image
+                    backgroundImage: AssetImage('assets/pasta.jpg'),
                   ),
                 ),
-
-                // Spacer between profile and stats
                 SizedBox(width: 6),
-
-                // Followers / Following / Posts
                 Expanded(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -120,20 +173,17 @@ class UserProfilePage extends StatelessWidget {
                     const EdgeInsets.symmetric(horizontal: 16.0, vertical: 0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  children: const [
+                  children: [
                     Text(
-                      "5 Star Restaurant",
+                      restaurantName,
                       style:
                           TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
                     ),
                     SizedBox(height: 4),
-                    Text(
-                        "A 5 Star Restaurant specializes in western and comfort food."
-                        "Whatsapp: +6012345678"
-                        "Email: restaurant@gmail.com"),
+                    Text(description),
                     SizedBox(height: 8),
                     Row(
-                      children: [
+                      children: const [
                         Icon(Icons.star, color: Colors.amber, size: 20),
                         Icon(Icons.star, color: Colors.amber, size: 20),
                         Icon(Icons.star, color: Colors.amber, size: 20),
@@ -166,7 +216,7 @@ class UserProfilePage extends StatelessWidget {
                           borderRadius: BorderRadius.circular(20),
                         ),
                       ),
-                      onPressed: () {},
+                      onPressed: _showEditDialog,
                       child: Text(
                         "Edit Restaurant Profile",
                         style: TextStyle(color: Colors.white),

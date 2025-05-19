@@ -12,7 +12,12 @@ class ProfileApp extends StatelessWidget {
   }
 }
 
-class UserProfilePage extends StatelessWidget {
+class UserProfilePage extends StatefulWidget {
+  @override
+  _UserProfilePageState createState() => _UserProfilePageState();
+}
+
+class _UserProfilePageState extends State<UserProfilePage> {
   final List<String> imagePaths = [
     'assets/pasta.jpg',
     'assets/pasta.jpg',
@@ -22,12 +27,56 @@ class UserProfilePage extends StatelessWidget {
     'assets/pasta.jpg',
   ];
 
+  String name = "Fergus Kim";
+  String description = "Welcome to my world :)";
+
+  void _showEditProfileDialog() {
+    final nameController = TextEditingController(text: name);
+    final descController = TextEditingController(text: description);
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text("Edit Profile"),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: nameController,
+              decoration: InputDecoration(labelText: "Name"),
+            ),
+            TextField(
+              controller: descController,
+              decoration: InputDecoration(labelText: "Description"),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            child: Text("Cancel"),
+            onPressed: () => Navigator.pop(context),
+          ),
+          ElevatedButton(
+            child: Text("Save"),
+            onPressed: () {
+              setState(() {
+                name = nameController.text;
+                description = descController.text;
+              });
+              Navigator.pop(context);
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: 1,
-        selectedItemColor: Colors.deepPurple,
+        selectedItemColor: Colors.deepPurpleAccent,
         unselectedItemColor: Colors.grey,
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
@@ -43,7 +92,7 @@ class UserProfilePage extends StatelessWidget {
             Stack(
               children: [
                 Image.asset(
-                  'assets/pasta.jpg', // Use real banner image
+                  'assets/pasta.jpg',
                   height: 200,
                   width: double.infinity,
                   fit: BoxFit.cover,
@@ -58,20 +107,32 @@ class UserProfilePage extends StatelessWidget {
             Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                // Profile Picture
                 Padding(
                   padding: const EdgeInsets.all(16.0),
-                  child: CircleAvatar(
-                    radius: 40,
-                    backgroundImage:
-                        AssetImage('assets/pasta.jpg'), // your profile image
+                  child: Column(
+                    children: [
+                      CircleAvatar(
+                        radius: 40,
+                        backgroundImage: AssetImage('assets/pasta.jpg'),
+                      ),
+                      const SizedBox(height: 8),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          name,
+                          style: const TextStyle(
+                              fontWeight: FontWeight.bold, fontSize: 18),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(description),
+                      ),
+                    ],
                   ),
                 ),
-
-                // Spacer between profile and stats
                 SizedBox(width: 6),
-
-                // Followers / Following / Posts
                 Expanded(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -113,25 +174,6 @@ class UserProfilePage extends StatelessWidget {
                 ),
               ],
             ),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 16.0, vertical: 0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: const [
-                    Text(
-                      "Fergus Kim",
-                      style:
-                          TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-                    ),
-                    SizedBox(height: 4),
-                    Text("Welcome to my world :)"),
-                  ],
-                ),
-              ),
-            ),
             SizedBox(height: 8),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -145,7 +187,7 @@ class UserProfilePage extends StatelessWidget {
                           borderRadius: BorderRadius.circular(20),
                         ),
                       ),
-                      onPressed: () {},
+                      onPressed: _showEditProfileDialog,
                       child: Text(
                         "Edit Profile",
                         style: TextStyle(color: Colors.white),
@@ -173,7 +215,7 @@ class UserProfilePage extends StatelessWidget {
                   fit: BoxFit.cover,
                 );
               },
-            )
+            ),
           ],
         ),
       ),
