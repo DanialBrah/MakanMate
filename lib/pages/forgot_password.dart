@@ -29,31 +29,36 @@ class MakanMateApp extends StatelessWidget {
           ),
         ),
       ),
-      home: const ForgotPasswordPage(),
+      home: const ResetPasswordPage(),
     );
   }
 }
 
-class ForgotPasswordPage extends StatefulWidget {
-  const ForgotPasswordPage({super.key});
+class ResetPasswordPage extends StatefulWidget {
+  const ResetPasswordPage({super.key});
 
   @override
-  State<ForgotPasswordPage> createState() => _ForgotPasswordPageState();
+  State<ResetPasswordPage> createState() => _ResetPasswordPageState();
 }
 
-class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
+class _ResetPasswordPageState extends State<ResetPasswordPage> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
+  final _newPasswordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
   bool _isLoading = false;
+  bool _showNewPassword = false;
+  bool _showConfirmPassword = false;
 
-  Future<void> _sendResetLink() async {
+  Future<void> _resetPassword() async {
     setState(() => _isLoading = true);
     await Future.delayed(const Duration(seconds: 2));
     setState(() => _isLoading = false);
     if (!mounted) return;
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: const Text('Password reset link sent to your email!'),
+        content: const Text('Password reset successfully!'),
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(10),
@@ -67,6 +72,8 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
   @override
   void dispose() {
     _emailController.dispose();
+    _newPasswordController.dispose();
+    _confirmPasswordController.dispose();
     super.dispose();
   }
 
@@ -78,7 +85,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
           icon: const Icon(Icons.arrow_back_rounded),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text('Forgot Password'),
+        title: const Text('Reset Password'),
         centerTitle: true,
         elevation: 0,
         backgroundColor: Colors.transparent,
@@ -92,8 +99,8 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
               colors: [
-                Color(0xFFFFF8F2), // Light orange tint
-                Color(0xFFFFF3E0), // Even lighter orange
+                Color(0xFFF8F5FF), // Light purple tint
+                Color(0xFFF0EBFF), // Even lighter purple
               ],
             ),
           ),
@@ -110,14 +117,14 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                       const SizedBox(height: 20),
                       Center(
                         child: Icon(
-                          Icons.restaurant_menu_rounded,
+                          Icons.lock_reset_rounded,
                           size: 120,
                           color: Colors.deepPurple[700],
                         ),
                       ),
                       const SizedBox(height: 30),
                       Text(
-                        'Forgot Password?',
+                        'Reset Password',
                         style: TextStyle(
                           fontSize: 28,
                           fontWeight: FontWeight.bold,
@@ -127,7 +134,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'Enter your email to receive a reset link',
+                        'Create a new secure password',
                         style: TextStyle(
                           fontSize: 16,
                           color: Colors.grey[700],
@@ -157,6 +164,80 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                           return null;
                         },
                       ),
+                      const SizedBox(height: 20),
+                      TextFormField(
+                        controller: _newPasswordController,
+                        obscureText: !_showNewPassword,
+                        decoration: InputDecoration(
+                          labelText: 'New Password',
+                          prefixIcon: Icon(
+                            Icons.lock_outline,
+                            color: Colors.deepPurple[800],
+                          ),
+                          floatingLabelStyle: TextStyle(
+                            color: Colors.deepPurple[800],
+                          ),
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              _showNewPassword
+                                  ? Icons.visibility_outlined
+                                  : Icons.visibility_off_outlined,
+                              color: Colors.grey,
+                            ),
+                            onPressed: () {
+                              setState(() {
+                                _showNewPassword = !_showNewPassword;
+                              });
+                            },
+                          ),
+                        ),
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Please enter a password';
+                          }
+                          if (value.length < 6) {
+                            return 'Password must be at least 6 characters';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 20),
+                      TextFormField(
+                        controller: _confirmPasswordController,
+                        obscureText: !_showConfirmPassword,
+                        decoration: InputDecoration(
+                          labelText: 'Confirm Password',
+                          prefixIcon: Icon(
+                            Icons.lock_outline,
+                            color: Colors.deepPurple[800],
+                          ),
+                          floatingLabelStyle: TextStyle(
+                            color: Colors.deepPurple[800],
+                          ),
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              _showConfirmPassword
+                                  ? Icons.visibility_outlined
+                                  : Icons.visibility_off_outlined,
+                              color: Colors.grey,
+                            ),
+                            onPressed: () {
+                              setState(() {
+                                _showConfirmPassword = !_showConfirmPassword;
+                              });
+                            },
+                          ),
+                        ),
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Please confirm your password';
+                          }
+                          if (value != _newPasswordController.text) {
+                            return 'Passwords do not match';
+                          }
+                          return null;
+                        },
+                      ),
                       const SizedBox(height: 40),
                       SizedBox(
                         width: double.infinity,
@@ -166,7 +247,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                               ? null
                               : () {
                                   if (_formKey.currentState!.validate()) {
-                                    _sendResetLink();
+                                    _resetPassword();
                                   }
                                 },
                           style: ElevatedButton.styleFrom(
@@ -186,38 +267,12 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                                   ),
                                 )
                               : const Text(
-                                  'Send Reset Link',
+                                  'Reset Password',
                                   style: TextStyle(
                                     fontSize: 16,
                                     fontWeight: FontWeight.w600,
                                   ),
                                 ),
-                        ),
-                      ),
-                      const SizedBox(height: 30),
-                      Center(
-                        child: Wrap(
-                          crossAxisAlignment: WrapCrossAlignment.center,
-                          children: [
-                            Text(
-                              "Remember your password? ",
-                              style: TextStyle(
-                                color: Colors.grey[700],
-                                fontFamily: 'Poppins',
-                              ),
-                            ),
-                            GestureDetector(
-                              onTap: () => Navigator.pop(context),
-                              child: Text(
-                                'Sign in',
-                                style: TextStyle(
-                                  color: Colors.deepPurple[800],
-                                  fontWeight: FontWeight.bold,
-                                  fontFamily: 'Poppins',
-                                ),
-                              ),
-                            ),
-                          ],
                         ),
                       ),
                     ],
