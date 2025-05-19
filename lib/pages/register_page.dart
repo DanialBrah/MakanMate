@@ -116,7 +116,7 @@ class _BeautifulRegisterPageState extends State<BeautifulRegisterPage> {
                         style: TextStyle(
                           fontSize: 28,
                           fontWeight: FontWeight.bold,
-                          color: Colors.blue[800],
+                          color: Colors.deepPurple[800],
                         ),
                       ),
                       const SizedBox(height: 8),
@@ -134,10 +134,10 @@ class _BeautifulRegisterPageState extends State<BeautifulRegisterPage> {
                           labelText: 'Username',
                           prefixIcon: Icon(
                             Icons.person_outline,
-                            color: Colors.blue[800],
+                            color: Colors.deepPurple[800],
                           ),
                           floatingLabelStyle: TextStyle(
-                            color: Colors.blue[800],
+                            color: Colors.deepPurple[800],
                           ),
                         ),
                         validator: (value) {
@@ -157,10 +157,10 @@ class _BeautifulRegisterPageState extends State<BeautifulRegisterPage> {
                           labelText: 'Email',
                           prefixIcon: Icon(
                             Icons.email_outlined,
-                            color: Colors.blue[800],
+                            color: Colors.deepPurple[800],
                           ),
                           floatingLabelStyle: TextStyle(
-                            color: Colors.blue[800],
+                            color: Colors.deepPurple[800],
                           ),
                         ),
                         validator: (value) {
@@ -180,10 +180,10 @@ class _BeautifulRegisterPageState extends State<BeautifulRegisterPage> {
                           labelText: 'Password',
                           prefixIcon: Icon(
                             Icons.lock_outline,
-                            color: Colors.blue[800],
+                            color: Colors.deepPurple[800],
                           ),
                           floatingLabelStyle: TextStyle(
-                            color: Colors.blue[800],
+                            color: Colors.deepPurple[800],
                           ),
                           suffixIcon: IconButton(
                             icon: Icon(
@@ -217,10 +217,10 @@ class _BeautifulRegisterPageState extends State<BeautifulRegisterPage> {
                           labelText: 'Confirm Password',
                           prefixIcon: Icon(
                             Icons.lock_outline,
-                            color: Colors.blue[800],
+                            color: Colors.deepPurple[800],
                           ),
                           floatingLabelStyle: TextStyle(
-                            color: Colors.blue[800],
+                            color: Colors.deepPurple[800],
                           ),
                           suffixIcon: IconButton(
                             icon: Icon(
@@ -277,7 +277,7 @@ class _BeautifulRegisterPageState extends State<BeautifulRegisterPage> {
                                     TextSpan(
                                       text: 'terms & conditions',
                                       style: TextStyle(
-                                        color: Colors.blue[800],
+                                        color: Colors.deepPurple[800],
                                         fontWeight: FontWeight.bold,
                                       ),
                                     ),
@@ -310,7 +310,7 @@ class _BeautifulRegisterPageState extends State<BeautifulRegisterPage> {
                                   }
                                 },
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.blue[800],
+                            backgroundColor: Colors.deepPurple[800],
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
@@ -330,6 +330,7 @@ class _BeautifulRegisterPageState extends State<BeautifulRegisterPage> {
                                   style: TextStyle(
                                     fontSize: 16,
                                     fontWeight: FontWeight.w600,
+                                    color: Colors.white,
                                   ),
                                 ),
                         ),
@@ -352,7 +353,7 @@ class _BeautifulRegisterPageState extends State<BeautifulRegisterPage> {
                               child: Text(
                                 'Sign in',
                                 style: TextStyle(
-                                  color: Colors.blue[800],
+                                  color: Colors.deepPurple[800],
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
