@@ -106,7 +106,7 @@ class _BeautifulRegisterPageState extends State<BeautifulRegisterPage> {
                       const SizedBox(height: 20),
                       Center(
                         child: Image.asset(
-                          'images/signup_illustration.png', // Replace with your asset
+                          'assets/login_illustration.png', // Replace with your asset
                           height: 180,
                         ),
                       ),
@@ -393,7 +393,7 @@ class _BeautifulRegisterPageState extends State<BeautifulRegisterPage> {
                           IconButton(
                             onPressed: () {},
                             icon: Image.asset(
-                              'images/google_icon.png', // Replace with your asset
+                              'assets/google_icon.png', // Replace with your asset
                               height: 24,
                             ),
                             style: IconButton.styleFrom(
@@ -409,7 +409,7 @@ class _BeautifulRegisterPageState extends State<BeautifulRegisterPage> {
                           IconButton(
                             onPressed: () {},
                             icon: Image.asset(
-                              'images/facebook_icon.png', // Replace with your asset
+                              'assets/facebook_icon.png', // Replace with your asset
                               height: 24,
                             ),
                             style: IconButton.styleFrom(
@@ -425,7 +425,7 @@ class _BeautifulRegisterPageState extends State<BeautifulRegisterPage> {
                           IconButton(
                             onPressed: () {},
                             icon: Image.asset(
-                              'images/apple_icon.png', // Replace with your asset
+                              'assets/apple_icon.png', // Replace with your asset
                               height: 24,
                             ),
                             style: IconButton.styleFrom(
