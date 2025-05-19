@@ -43,7 +43,7 @@ class UserProfilePage extends StatelessWidget {
             Stack(
               children: [
                 Image.asset(
-                  'assets/pasta.jpg', // Use real banner image
+                  'assets/pasta.jpg',
                   height: 200,
                   width: double.infinity,
                   fit: BoxFit.cover,
@@ -58,20 +58,14 @@ class UserProfilePage extends StatelessWidget {
             Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                // Profile Picture
                 Padding(
                   padding: const EdgeInsets.all(16.0),
                   child: CircleAvatar(
                     radius: 40,
-                    backgroundImage:
-                        AssetImage('assets/pasta.jpg'), // your profile image
+                    backgroundImage: AssetImage('assets/pasta.jpg'),
                   ),
                 ),
-
-                // Spacer between profile and stats
                 SizedBox(width: 6),
-
-                // Followers / Following / Posts
                 Expanded(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -128,8 +122,8 @@ class UserProfilePage extends StatelessWidget {
                     ),
                     SizedBox(height: 4),
                     Text(
-                        "A 5 Star Restaurant specializes in western and comfort food."
-                        "Whatsapp: +6012345678"
+                        "A 5 Star Restaurant specializes in western and comfort food.\n"
+                        "Whatsapp: +6012345678\n"
                         "Email: restaurant@gmail.com"),
                     SizedBox(height: 8),
                     Row(
@@ -166,7 +160,82 @@ class UserProfilePage extends StatelessWidget {
                           borderRadius: BorderRadius.circular(20),
                         ),
                       ),
-                      onPressed: () {},
+                      onPressed: () {
+                        showDialog(
+                          context: context,
+                          builder: (BuildContext context) {
+                            TextEditingController reviewController =
+                                TextEditingController();
+                            int selectedRating = 0;
+
+                            return StatefulBuilder(
+                              builder: (context, setState) {
+                                return AlertDialog(
+                                  title: Text("Leave a Review"),
+                                  content: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: List.generate(5, (index) {
+                                          return IconButton(
+                                            icon: Icon(
+                                              index < selectedRating
+                                                  ? Icons.star
+                                                  : Icons.star_border,
+                                              color: Colors.amber,
+                                            ),
+                                            onPressed: () {
+                                              setState(() {
+                                                selectedRating = index + 1;
+                                              });
+                                            },
+                                          );
+                                        }),
+                                      ),
+                                      SizedBox(height: 10),
+                                      TextField(
+                                        controller: reviewController,
+                                        decoration: InputDecoration(
+                                          labelText: "Your review",
+                                          border: OutlineInputBorder(),
+                                        ),
+                                        maxLines: 3,
+                                      ),
+                                    ],
+                                  ),
+                                  actions: [
+                                    TextButton(
+                                      child: Text("Cancel"),
+                                      onPressed: () =>
+                                          Navigator.of(context).pop(),
+                                    ),
+                                    ElevatedButton(
+                                      child: Text("Submit"),
+                                      onPressed: () {
+                                        String reviewText =
+                                            reviewController.text.trim();
+                                        Navigator.of(context).pop();
+                                        ScaffoldMessenger.of(context)
+                                            .showSnackBar(
+                                          SnackBar(
+                                            content: Text(
+                                              reviewText.isNotEmpty
+                                                  ? "Rating: $selectedRating\nReview: $reviewText"
+                                                  : "No review entered",
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                  ],
+                                );
+                              },
+                            );
+                          },
+                        );
+                      },
                       child: Text(
                         "Leave Some Review & Ratings!",
                         style: TextStyle(color: Colors.white),
