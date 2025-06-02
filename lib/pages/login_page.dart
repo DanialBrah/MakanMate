@@ -1,41 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-// Import the pages with correct class references
-import '../pages/register_page.dart'; // Contains BeautifulRegisterPage
-import '../pages/forgot_password.dart'; // Contains ResetPasswordPage
-
-void main() {
-  runApp(const MyApp());
-}
-
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Beautiful Login',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        primarySwatch: Colors.deepPurple,
-        fontFamily: 'Poppins',
-        inputDecorationTheme: InputDecorationTheme(
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide.none,
-          ),
-          filled: true,
-          fillColor: Colors.white.withOpacity(0.9),
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 20,
-            vertical: 18,
-          ),
-        ),
-      ),
-      home: const BeautifulLoginPage(),
-    );
-  }
-}
+import '../services/auth_service.dart'; // Import your auth service
+import '../pages/register_page.dart';
+import '../pages/forgot_password.dart';
+import '../pages/home_page.dart'; // You'll need to create this
 
 class BeautifulLoginPage extends StatefulWidget {
   const BeautifulLoginPage({super.key});
@@ -48,6 +16,8 @@ class _BeautifulLoginPageState extends State<BeautifulLoginPage> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final AuthService _authService = AuthService();
+
   String? _selectedRole;
   bool _rememberMe = false;
   bool _isLoading = false;
@@ -62,21 +32,61 @@ class _BeautifulLoginPageState extends State<BeautifulLoginPage> {
     super.dispose();
   }
 
-  Future<void> _fakeLogin() async {
+  Future<void> _handleLogin() async {
+    if (!_formKey.currentState!.validate()) return;
+
     setState(() => _isLoading = true);
-    await Future.delayed(const Duration(seconds: 2));
-    setState(() => _isLoading = false);
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text('Login successful!'),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
+
+    try {
+      final userCredential = await _authService.signInWithEmailAndPassword(
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+      );
+
+      if (userCredential != null) {
+        // Update last login time
+        await _authService.updateLastLogin();
+
+        if (!mounted) return;
+
+        // Navigate to home page based on role
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => HomePage(userRole: _selectedRole ?? 'User'),
+          ),
+        );
+
+        // Show success message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Login successful!'),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.toString()),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          backgroundColor: Colors.red,
         ),
-        backgroundColor: Colors.green,
-      ),
-    );
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
   }
 
   void _navigateToRegister() {
@@ -121,11 +131,11 @@ class _BeautifulLoginPageState extends State<BeautifulLoginPage> {
                     // You can replace this with an actual image
                     Container(
                       decoration: BoxDecoration(
-                        image: DecorationImage(
+                        image: const DecorationImage(
                           image: AssetImage('assets/login_illustration.png'),
                           fit: BoxFit.cover,
                           colorFilter: ColorFilter.mode(
-                            Colors.deepPurple.withOpacity(0.3),
+                            Color(0x4D7B1FA2),
                             BlendMode.darken,
                           ),
                         ),
@@ -239,11 +249,14 @@ class _BeautifulLoginPageState extends State<BeautifulLoginPage> {
                                 controller: _emailController,
                                 label: 'Email',
                                 icon: Icons.email_outlined,
+                                keyboardType: TextInputType.emailAddress,
                                 validator: (value) {
                                   if (value == null || value.isEmpty) {
                                     return 'Please enter your email';
                                   }
-                                  if (!value.contains('@')) {
+                                  if (!RegExp(
+                                          r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$')
+                                      .hasMatch(value)) {
                                     return 'Please enter a valid email';
                                   }
                                   return null;
@@ -273,6 +286,9 @@ class _BeautifulLoginPageState extends State<BeautifulLoginPage> {
                                 validator: (value) {
                                   if (value == null || value.isEmpty) {
                                     return 'Please enter your password';
+                                  }
+                                  if (value.length < 6) {
+                                    return 'Password must be at least 6 characters';
                                   }
                                   return null;
                                 },
@@ -376,14 +392,7 @@ class _BeautifulLoginPageState extends State<BeautifulLoginPage> {
                                 width: double.infinity,
                                 height: 56,
                                 child: ElevatedButton(
-                                  onPressed: _isLoading
-                                      ? null
-                                      : () {
-                                          if (_formKey.currentState!
-                                              .validate()) {
-                                            _fakeLogin();
-                                          }
-                                        },
+                                  onPressed: _isLoading ? null : _handleLogin,
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: Colors.deepPurple[800],
                                     foregroundColor: Colors.white,
@@ -478,15 +487,42 @@ class _BeautifulLoginPageState extends State<BeautifulLoginPage> {
                                 children: [
                                   _buildSocialButton(
                                     icon: Icons.g_mobiledata_rounded,
-                                    onPressed: () {},
+                                    onPressed: () {
+                                      // TODO: Implement Google Sign In
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
+                                        const SnackBar(
+                                          content: Text(
+                                              'Google Sign In coming soon!'),
+                                        ),
+                                      );
+                                    },
                                   ),
                                   _buildSocialButton(
                                     icon: Icons.facebook_rounded,
-                                    onPressed: () {},
+                                    onPressed: () {
+                                      // TODO: Implement Facebook Sign In
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
+                                        const SnackBar(
+                                          content: Text(
+                                              'Facebook Sign In coming soon!'),
+                                        ),
+                                      );
+                                    },
                                   ),
                                   _buildSocialButton(
                                     icon: Icons.apple_rounded,
-                                    onPressed: () {},
+                                    onPressed: () {
+                                      // TODO: Implement Apple Sign In
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
+                                        const SnackBar(
+                                          content: Text(
+                                              'Apple Sign In coming soon!'),
+                                        ),
+                                      );
+                                    },
                                   ),
                                 ],
                               ),
@@ -512,11 +548,13 @@ class _BeautifulLoginPageState extends State<BeautifulLoginPage> {
     required IconData icon,
     bool obscureText = false,
     Widget? suffixIcon,
+    TextInputType? keyboardType,
     String? Function(String?)? validator,
   }) {
     return TextFormField(
       controller: controller,
       obscureText: obscureText,
+      keyboardType: keyboardType,
       decoration: InputDecoration(
         labelText: label,
         prefixIcon: Icon(
