@@ -1,40 +1,9 @@
 import 'package:flutter/material.dart';
 
-void main() {
-  runApp(const MyApp());
-}
+class HomePage extends StatelessWidget {
+  final String userRole;
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Beautiful Login',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-        fontFamily: 'Poppins',
-        inputDecorationTheme: InputDecorationTheme(
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide.none,
-          ),
-          filled: true,
-          fillColor: Colors.grey.withOpacity(0.1),
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 20,
-            vertical: 16,
-          ),
-        ),
-      ),
-      home: const FeedPage(),
-    );
-  }
-}
-
-class FeedPage extends StatelessWidget {
-  const FeedPage({super.key});
+  const HomePage({super.key, required this.userRole});
 
   @override
   Widget build(BuildContext context) {
@@ -43,7 +12,25 @@ class FeedPage extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        title: const Text('Hello Fergus!', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+        title: Text('Hello ${_getUserName()}!',
+            style: const TextStyle(
+                color: Colors.black, fontWeight: FontWeight.bold)),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 16.0),
+            child: Chip(
+              label: Text(
+                userRole,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              backgroundColor: Colors.deepPurple[800],
+            ),
+          ),
+        ],
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -67,7 +54,8 @@ class FeedPage extends StatelessWidget {
                 difficulty: 'Easy',
                 username: 'Melvin Robson',
                 title: '5 Star Restaurant',
-                description: 'Taste the good ness of 5-Star Tomahawk Steak by Milesime Hotel.',
+                description:
+                    'Taste the good ness of 5-Star Tomahawk Steak by Milesime Hotel.',
               ),
               const SizedBox(height: 16),
               _buildPost(
@@ -84,16 +72,23 @@ class FeedPage extends StatelessWidget {
       ),
       bottomNavigationBar: BottomNavigationBar(
         type: BottomNavigationBarType.fixed,
-        selectedItemColor: Colors.purple,
+        selectedItemColor: Colors.deepPurple[800],
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
           BottomNavigationBarItem(icon: Icon(Icons.search), label: 'Search'),
-          BottomNavigationBarItem(icon: Icon(Icons.add_circle, size: 40), label: ''),
-          BottomNavigationBarItem(icon: Icon(Icons.chat_bubble_outline), label: 'Chat'),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.add_circle, size: 40), label: ''),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.chat_bubble_outline), label: 'Chat'),
           BottomNavigationBarItem(icon: Icon(Icons.map), label: 'Map'),
         ],
       ),
     );
+  }
+
+  String _getUserName() {
+    // You can later get this from Firebase user data
+    return 'User'; // Placeholder
   }
 
   Widget _buildPost(BuildContext context,
@@ -122,16 +117,27 @@ class FeedPage extends StatelessWidget {
             children: [
               ClipRRect(
                 borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(12), topRight: Radius.circular(12)),
-                child: Image.asset(image),
+                    topLeft: Radius.circular(12),
+                    topRight: Radius.circular(12)),
+                child: Container(
+                  height: 200,
+                  width: double.infinity,
+                  color: Colors.grey[300],
+                  child: const Icon(
+                    Icons.restaurant,
+                    size: 50,
+                    color: Colors.grey,
+                  ),
+                ),
               ),
               Positioned(
                 top: 8,
                 left: 8,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: Colors.purple,
+                    color: Colors.deepPurple[800],
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
@@ -155,8 +161,11 @@ class FeedPage extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(username, style: const TextStyle(fontWeight: FontWeight.bold)),
-                Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                Text(username,
+                    style: const TextStyle(fontWeight: FontWeight.bold)),
+                Text(title,
+                    style: const TextStyle(
+                        fontSize: 16, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 4),
                 Text(description),
                 const Divider(),
@@ -183,4 +192,4 @@ class FeedPage extends StatelessWidget {
       ),
     );
   }
-} 
+}

@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
 class BeautifulRegisterPage extends StatefulWidget {
   const BeautifulRegisterPage({super.key});
@@ -21,6 +24,9 @@ class _BeautifulRegisterPageState extends State<BeautifulRegisterPage> {
   bool _obscureConfirmPassword = true;
 
   final List<String> _roles = ['User', 'Restaurant Owner', 'Admin'];
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final GoogleSignIn _googleSignIn = GoogleSignIn();
 
   @override
   void dispose() {
@@ -31,21 +37,184 @@ class _BeautifulRegisterPageState extends State<BeautifulRegisterPage> {
     super.dispose();
   }
 
-  Future<void> _fakeRegister() async {
+  Future<void> _registerWithEmailAndPassword() async {
     setState(() => _isLoading = true);
-    await Future.delayed(const Duration(seconds: 2));
-    setState(() => _isLoading = false);
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text('Registration successful!'),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
+
+    try {
+      // Create user with Firebase Auth
+      UserCredential userCredential =
+          await _auth.createUserWithEmailAndPassword(
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+      );
+
+      // Update user profile with display name
+      await userCredential.user
+          ?.updateDisplayName(_usernameController.text.trim());
+
+      // Store additional user data in Firestore
+      await _firestore.collection('users').doc(userCredential.user?.uid).set({
+        'username': _usernameController.text.trim(),
+        'email': _emailController.text.trim(),
+        'role': _selectedRole,
+        'createdAt': FieldValue.serverTimestamp(),
+        'uid': userCredential.user?.uid,
+      });
+
+      if (!mounted) return;
+
+      // Show success message
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text(
+              'Registration successful! Please sign in with your new account.'),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          backgroundColor: Colors.green,
+          duration: const Duration(seconds: 3),
         ),
-        backgroundColor: Colors.green,
-      ),
-    );
+      );
+
+      // Sign out the user so they need to login again
+      await _auth.signOut();
+
+      // Navigate back to login page
+      Navigator.pop(context);
+    } on FirebaseAuthException catch (e) {
+      String errorMessage;
+      switch (e.code) {
+        case 'weak-password':
+          errorMessage = 'The password provided is too weak.';
+          break;
+        case 'email-already-in-use':
+          errorMessage = 'The account already exists for that email.';
+          break;
+        case 'invalid-email':
+          errorMessage = 'The email address is not valid.';
+          break;
+        default:
+          errorMessage = 'An error occurred. Please try again.';
+      }
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(errorMessage),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('An unexpected error occurred: ${e.toString()}'),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  Future<void> _signInWithGoogle() async {
+    try {
+      setState(() => _isLoading = true);
+
+      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+      if (googleUser == null) {
+        setState(() => _isLoading = false);
+        return; // User canceled sign-in
+      }
+
+      final GoogleSignInAuthentication googleAuth =
+          await googleUser.authentication;
+
+      final credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+
+      UserCredential userCredential =
+          await _auth.signInWithCredential(credential);
+
+      // Check if this is a new user, if so, store their data
+      if (userCredential.additionalUserInfo?.isNewUser ?? false) {
+        await _firestore.collection('users').doc(userCredential.user?.uid).set({
+          'username': userCredential.user?.displayName ?? 'Google User',
+          'email': userCredential.user?.email ?? '',
+          'role': 'User', // Default role for Google sign-in
+          'createdAt': FieldValue.serverTimestamp(),
+          'uid': userCredential.user?.uid,
+          'signInMethod': 'google',
+        });
+
+        if (!mounted) return;
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text(
+                'Account created with Google! Please sign in again.'),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+
+        // Sign out and navigate back to login
+        await _auth.signOut();
+        await _googleSignIn.signOut();
+        Navigator.pop(context);
+      } else {
+        // Existing user, sign them out and go back to login
+        if (!mounted) return;
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Account already exists. Please sign in.'),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            backgroundColor: Colors.orange,
+          ),
+        );
+
+        await _auth.signOut();
+        await _googleSignIn.signOut();
+        Navigator.pop(context);
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Google sign-in failed: ${e.toString()}'),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
   }
 
   void _navigateToLogin() {
@@ -219,7 +388,9 @@ class _BeautifulRegisterPageState extends State<BeautifulRegisterPage> {
                                   if (value == null || value.isEmpty) {
                                     return 'Please enter your email';
                                   }
-                                  if (!value.contains('@')) {
+                                  if (!RegExp(
+                                          r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$')
+                                      .hasMatch(value)) {
                                     return 'Please enter a valid email';
                                   }
                                   return null;
@@ -386,7 +557,7 @@ class _BeautifulRegisterPageState extends State<BeautifulRegisterPage> {
                                           if (_formKey.currentState!
                                               .validate()) {
                                             if (_agreeToTerms) {
-                                              _fakeRegister();
+                                              _registerWithEmailAndPassword();
                                             } else {
                                               ScaffoldMessenger.of(context)
                                                   .showSnackBar(
@@ -499,15 +670,34 @@ class _BeautifulRegisterPageState extends State<BeautifulRegisterPage> {
                                 children: [
                                   _buildSocialButton(
                                     icon: Icons.g_mobiledata_rounded,
-                                    onPressed: () {},
+                                    onPressed:
+                                        _isLoading ? null : _signInWithGoogle,
                                   ),
                                   _buildSocialButton(
                                     icon: Icons.facebook_rounded,
-                                    onPressed: () {},
+                                    onPressed: () {
+                                      // Implement Facebook sign-in
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
+                                        const SnackBar(
+                                          content: Text(
+                                              'Facebook sign-in not implemented yet'),
+                                        ),
+                                      );
+                                    },
                                   ),
                                   _buildSocialButton(
                                     icon: Icons.apple_rounded,
-                                    onPressed: () {},
+                                    onPressed: () {
+                                      // Implement Apple sign-in
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
+                                        const SnackBar(
+                                          content: Text(
+                                              'Apple sign-in not implemented yet'),
+                                        ),
+                                      );
+                                    },
                                   ),
                                 ],
                               ),
@@ -576,7 +766,7 @@ class _BeautifulRegisterPageState extends State<BeautifulRegisterPage> {
 
   Widget _buildSocialButton({
     required IconData icon,
-    required VoidCallback onPressed,
+    required VoidCallback? onPressed,
   }) {
     return Container(
       width: 56,
@@ -600,7 +790,7 @@ class _BeautifulRegisterPageState extends State<BeautifulRegisterPage> {
         onPressed: onPressed,
         icon: Icon(
           icon,
-          color: Colors.grey[700],
+          color: onPressed != null ? Colors.grey[700] : Colors.grey[400],
           size: 24,
         ),
       ),
