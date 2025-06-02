@@ -85,4 +85,5 @@ class DefaultFirebaseOptions {
     storageBucket: 'makanmate-6cfdb.firebasestorage.app',
     measurementId: 'G-FJ8EJGGX0X',
   );
+
 }
