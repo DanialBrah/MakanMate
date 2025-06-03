@@ -58,17 +58,21 @@ class PostService {
     });
   }
 
-  // Get posts by user
+// Get posts by user (without ordering to avoid index requirement)
   Stream<List<Post>> getUserPosts(String userId) {
     return _firestore
         .collection('posts')
         .where('userId', isEqualTo: userId)
-        .orderBy('createdAt', descending: true)
         .snapshots()
         .map((snapshot) {
-      return snapshot.docs.map((doc) {
+      List<Post> posts = snapshot.docs.map((doc) {
         return Post.fromMap(doc.data(), doc.id);
       }).toList();
+
+      // Sort in memory instead of in the query
+      posts.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
+      return posts;
     });
   }
 
