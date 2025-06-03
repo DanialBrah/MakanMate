@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../models/post_model.dart';
 import '../services/post_service.dart';
 import '../pages/createpost_page.dart';
+import '../pages/userprofile_page.dart';
 import '../widgets/post_card.dart';
 
 class HomePage extends StatefulWidget {
@@ -45,16 +46,27 @@ class _HomePageState extends State<HomePage> {
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 16.0),
-            child: Chip(
-              label: Text(
-                widget.userRole,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
+            child: GestureDetector(
+              onTap: () {
+                // Navigate to user profile page
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const UserProfilePage(),
+                  ),
+                );
+              },
+              child: Chip(
+                label: Text(
+                  widget.userRole,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
+                backgroundColor: Colors.deepPurple[800],
               ),
-              backgroundColor: Colors.deepPurple[800],
             ),
           ),
         ],
