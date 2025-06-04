@@ -6,7 +6,9 @@ import '../models/post_model.dart';
 import '../services/post_service.dart';
 
 class CreatePostPage extends StatefulWidget {
-  const CreatePostPage({super.key});
+  final Post? postToEdit;
+
+  const CreatePostPage({super.key, this.postToEdit});
 
   @override
   State<CreatePostPage> createState() => _CreatePostPageState();
