@@ -150,14 +150,14 @@ class _UserProfilePageState extends State<UserProfilePage>
               if (value == 'signout') {
                 _showSignOutDialog();
               } else if (value == 'edit') {
-                Navigator.of(context)
-                    .push(
+                Navigator.push(
+                  context,
                   MaterialPageRoute(
                       builder: (context) => const EditProfilePage()),
-                )
-                    .then((result) {
+                ).then((result) {
                   if (result == true) {
-                    _loadUserData(); // ✅ Refresh user data only if profile was updated
+                    Navigator.pop(
+                        context, true); // Pass back result to HomePage
                   }
                 });
               }
