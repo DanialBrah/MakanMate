@@ -8,7 +8,6 @@ import '../widgets/post_card.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../widgets/edit_post_dialog.dart';
 
-
 class HomePage extends StatefulWidget {
   final String userRole;
 
@@ -77,12 +76,11 @@ class _HomePageState extends State<HomePage> {
                 // Navigate to user profile page
                 Navigator.push(
                   context,
-                  MaterialPageRoute(
-                    builder: (context) => const UserProfilePage(),
-                  ),
+                  MaterialPageRoute(  
+                      builder: (context) => const UserProfilePage()),
                 ).then((result) {
                   if (result == true) {
-                    _loadUsernameFromFirestore(); // ✅ finally update the username on HomePage
+                    _loadUsernameFromFirestore(); // Refresh username if user edited profile
                   }
                 });
               },
