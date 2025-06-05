@@ -6,6 +6,7 @@ import '../services/post_service.dart';
 import '../services/auth_service.dart';
 import '../widgets/post_card.dart';
 import '../pages/createpost_page.dart';
+import 'edit_profile_page.dart';
 
 class UserProfilePage extends StatefulWidget {
   const UserProfilePage({super.key});
@@ -121,7 +122,7 @@ class _UserProfilePageState extends State<UserProfilePage>
     }
 
     final user = FirebaseAuth.instance.currentUser;
-    final userName = _userData?['name'] ?? user?.displayName ?? 'User';
+    final userName = _userData?['username'] ?? user?.displayName ?? 'User';
     final userEmail = _userData?['email'] ?? user?.email ?? '';
     final userRole = _userData?['role'] ?? 'User';
 
@@ -147,9 +148,30 @@ class _UserProfilePageState extends State<UserProfilePage>
             onSelected: (value) {
               if (value == 'signout') {
                 _showSignOutDialog();
+              } else if (value == 'edit') {
+                Navigator.of(context)
+                    .push(
+                  MaterialPageRoute(
+                      builder: (context) => const EditProfilePage()),
+                )
+                    .then((result) {
+                  if (result == true) {
+                    _loadUserData(); // ✅ Refresh user data only if profile was updated
+                  }
+                });
               }
             },
             itemBuilder: (BuildContext context) => [
+              const PopupMenuItem<String>(
+                value: 'edit',
+                child: Row(
+                  children: [
+                    Icon(Icons.edit, color: Colors.black, size: 20),
+                    SizedBox(width: 8),
+                    Text('Edit Profile'),
+                  ],
+                ),
+              ),
               const PopupMenuItem<String>(
                 value: 'signout',
                 child: Row(
