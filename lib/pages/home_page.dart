@@ -6,6 +6,8 @@ import '../pages/createpost_page.dart';
 import '../pages/userprofile_page.dart';
 import '../widgets/post_card.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../widgets/edit_post_dialog.dart';
+
 
 class HomePage extends StatefulWidget {
   final String userRole;
@@ -237,6 +239,8 @@ class _HomePageState extends State<HomePage> {
                             post: post,
                             onLike: () => _handleLike(post.id),
                             onComment: () => _handleComment(post),
+                            onEdit: () => _handleEdit(context, post),
+                            onDelete: () => _handleDelete(post.id),
                           ),
                         );
                       },
@@ -298,6 +302,35 @@ class _HomePageState extends State<HomePage> {
           ),
         );
       }
+    }
+  }
+
+  // Handle edit functionality
+  void _handleEdit(BuildContext context, Post post) {
+    showDialog(
+      context: context,
+      builder: (context) => EditPostDialog(
+        post: post,
+        onPostUpdated: () {
+          // Refresh the posts list
+          setState(() {});
+        },
+      ),
+    );
+  }
+
+  // Handle delete functionality
+  Future<void> _handleDelete(String postId) async {
+    try {
+      final currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser != null) {
+        await _postService.deletePost(postId, currentUser.uid);
+        // Show success message
+        print('Post deleted successfully');
+      }
+    } catch (e) {
+      print('Error deleting post: $e');
+      // Show error message to user
     }
   }
 
