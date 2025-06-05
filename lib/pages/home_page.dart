@@ -5,6 +5,7 @@ import '../services/post_service.dart';
 import '../pages/createpost_page.dart';
 import '../pages/userprofile_page.dart';
 import '../widgets/post_card.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class HomePage extends StatefulWidget {
   final String userRole;
@@ -17,6 +18,7 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   final PostService _postService = PostService();
+  String _firestoreUsername = 'User';
   int _selectedIndex = 0;
 
   void _onBottomNavTap(int index) {
@@ -34,13 +36,35 @@ class _HomePageState extends State<HomePage> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    _loadUsernameFromFirestore();
+  }
+
+  Future<void> _loadUsernameFromFirestore() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
+
+      if (doc.exists && doc.data() != null) {
+        setState(() {
+          _firestoreUsername = doc.data()!['username'] ?? 'User';
+        });
+      }
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.grey[50],
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        title: Text('Hello ${_getUserName()}!',
+        title: Text('Hello $_firestoreUsername!',
             style: const TextStyle(
                 color: Colors.black, fontWeight: FontWeight.bold)),
         actions: [
@@ -54,7 +78,11 @@ class _HomePageState extends State<HomePage> {
                   MaterialPageRoute(
                     builder: (context) => const UserProfilePage(),
                   ),
-                );
+                ).then((result) {
+                  if (result == true) {
+                    _loadUsernameFromFirestore(); // ✅ finally update the username on HomePage
+                  }
+                });
               },
               child: Chip(
                 label: Text(
@@ -239,9 +267,20 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  String _getUserName() {
+  Future<String> _getUserName() async {
     final user = FirebaseAuth.instance.currentUser;
-    return user?.displayName ?? 'User';
+    if (user == null) return 'User';
+
+    final doc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .get();
+
+    if (doc.exists && doc.data() != null) {
+      return doc['username'] ?? 'User';
+    } else {
+      return 'User';
+    }
   }
 
   Future<void> _handleLike(String postId) async {
