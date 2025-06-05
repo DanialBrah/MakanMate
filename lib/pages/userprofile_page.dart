@@ -6,6 +6,7 @@ import '../services/post_service.dart';
 import '../services/auth_service.dart';
 import '../widgets/post_card.dart';
 import '../pages/createpost_page.dart';
+import '../widgets/edit_post_dialog.dart';
 import 'edit_profile_page.dart';
 
 class UserProfilePage extends StatefulWidget {
@@ -476,6 +477,8 @@ class _UserProfilePageState extends State<UserProfilePage>
                   post: post,
                   onLike: () => _handleLike(post.id),
                   onComment: () => _handleComment(post),
+                  onEdit: () => _handleEdit(context, post),
+                  onDelete: () => _handleDelete(post.id),
                 ),
               );
             },
@@ -541,5 +544,34 @@ class _UserProfilePageState extends State<UserProfilePage>
         content: Text('Comment feature coming soon!'),
       ),
     );
+  }
+
+  // Handle edit functionality
+  void _handleEdit(BuildContext context, Post post) {
+    showDialog(
+      context: context,
+      builder: (context) => EditPostDialog(
+        post: post,
+        onPostUpdated: () {
+          // Refresh the posts list
+          setState(() {});
+        },
+      ),
+    );
+  }
+
+  // Handle delete functionality
+  Future<void> _handleDelete(String postId) async {
+    try {
+      final currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser != null) {
+        await _postService.deletePost(postId, currentUser.uid);
+        // Show success message
+        print('Post deleted successfully');
+      }
+    } catch (e) {
+      print('Error deleting post: $e');
+      // Show error message to user
+    }
   }
 }
