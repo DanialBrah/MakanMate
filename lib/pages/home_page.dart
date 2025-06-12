@@ -20,6 +20,7 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   final PostService _postService = PostService();
   String _firestoreUsername = 'User';
+  String? _userProfileUrl;
   int _selectedIndex = 0;
 
   // Filter state variables
@@ -58,7 +59,7 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
-    _loadUsernameFromFirestore();
+    _loadUserProfileData();
     _loadFilterOptions();
     _priceController.text = _maxPrice.toString();
   }
@@ -70,7 +71,7 @@ class _HomePageState extends State<HomePage> {
     super.dispose();
   }
 
-  Future<void> _loadUsernameFromFirestore() async {
+  Future<void> _loadUserProfileData() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
       final doc = await FirebaseFirestore.instance
@@ -81,6 +82,7 @@ class _HomePageState extends State<HomePage> {
       if (doc.exists && doc.data() != null) {
         setState(() {
           _firestoreUsername = doc.data()!['username'] ?? 'User';
+          _userProfileUrl = doc.data()!['profilePicture'];
         });
       }
     }
@@ -554,23 +556,40 @@ class _HomePageState extends State<HomePage> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                      builder: (context) => const UserProfilePage()),
+                    builder: (context) => const UserProfilePage(),
+                  ),
                 ).then((result) {
                   if (result == true) {
-                    _loadUsernameFromFirestore();
+                    _loadUserProfileData();
                   }
                 });
               },
-              child: Chip(
-                label: Text(
-                  widget.userRole,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
+              child: Container(
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: Colors.grey[300]!,
+                    width: 2,
                   ),
                 ),
-                backgroundColor: Colors.deepPurple[800],
+                child: CircleAvatar(
+                  radius: 18,
+                  backgroundColor: Colors.deepPurple[100],
+                  backgroundImage: _userProfileUrl != null
+                      ? NetworkImage(_userProfileUrl!)
+                      : null,
+                  child: _userProfileUrl == null
+                      ? Text(
+                          _firestoreUsername.isNotEmpty
+                              ? _firestoreUsername[0].toUpperCase()
+                              : 'U',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        )
+                      : null,
+                ),
               ),
             ),
           ),
