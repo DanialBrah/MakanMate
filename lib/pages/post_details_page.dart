@@ -5,6 +5,8 @@ import '../models/post_model.dart';
 import '../services/post_service.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
+enum CommentSort { newest, oldest }
+
 class PostDetailsPage extends StatefulWidget {
   final Post post;
 
@@ -21,6 +23,7 @@ class _PostDetailsPageState extends State<PostDetailsPage> {
   bool _isSubmitting = false;
   late Stream<Post> _postStream;
   bool _showRating = false; // Add this state variable
+  CommentSort _currentSort = CommentSort.newest;
 
   @override
   void initState() {
@@ -91,7 +94,7 @@ class _PostDetailsPageState extends State<PostDetailsPage> {
   // Update the _showRatingBottomSheet method
   void _showRatingBottomSheet() {
     double tempRating = _commentRating;
-    
+
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -117,7 +120,7 @@ class _PostDetailsPageState extends State<PostDetailsPage> {
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
-              
+
               // Rating stars
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -139,7 +142,7 @@ class _PostDetailsPageState extends State<PostDetailsPage> {
                   );
                 }),
               ),
-              
+
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 child: Text(
@@ -151,7 +154,7 @@ class _PostDetailsPageState extends State<PostDetailsPage> {
                   ),
                 ),
               ),
-              
+
               // Buttons
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -192,7 +195,14 @@ class _PostDetailsPageState extends State<PostDetailsPage> {
                             borderRadius: BorderRadius.circular(12),
                           ),
                         ),
-                        child: const Text('Rate'),
+                        child: const Text(
+                          'Rate',
+                          style: TextStyle(
+                            color: Colors.white, // Add this style
+                            fontWeight:
+                                FontWeight.bold, // Optional: make it bold
+                          ),
+                        ),
                       ),
                     ),
                   ],
@@ -203,6 +213,19 @@ class _PostDetailsPageState extends State<PostDetailsPage> {
         ),
       ),
     );
+  }
+
+  List<Comment> _getSortedComments(List<Comment> comments) {
+    final sortedComments = List<Comment>.from(comments);
+    switch (_currentSort) {
+      case CommentSort.newest:
+        sortedComments.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+        break;
+      case CommentSort.oldest:
+        sortedComments.sort((a, b) => a.createdAt.compareTo(b.createdAt));
+        break;
+    }
+    return sortedComments;
   }
 
   @override
@@ -225,7 +248,9 @@ class _PostDetailsPageState extends State<PostDetailsPage> {
             slivers: [
               // App Bar
               SliverAppBar(
-                expandedHeight: post.imageUrl != null ? MediaQuery.of(context).size.height * 0.6 : 0.0, // 60% of screen height
+                expandedHeight: post.imageUrl != null
+                    ? MediaQuery.of(context).size.height * 0.6
+                    : 0.0, // 60% of screen height
                 pinned: true,
                 stretch: true,
                 backgroundColor: Colors.white,
@@ -431,7 +456,8 @@ class _PostDetailsPageState extends State<PostDetailsPage> {
                             onPressed: () {
                               // Implement share functionality
                               ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Sharing coming soon!')),
+                                const SnackBar(
+                                    content: Text('Sharing coming soon!')),
                               );
                             },
                           ),
@@ -463,10 +489,13 @@ class _PostDetailsPageState extends State<PostDetailsPage> {
                               children: [
                                 Text(
                                   post.title,
-                                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.grey[800],
-                                  ),
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .titleLarge
+                                      ?.copyWith(
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.grey[800],
+                                      ),
                                 ),
                                 const SizedBox(height: 8),
                                 Text(
@@ -480,10 +509,11 @@ class _PostDetailsPageState extends State<PostDetailsPage> {
                               ],
                             ),
                           ),
-                          
+
                           // Stats Row
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 12),
                             decoration: BoxDecoration(
                               border: Border(
                                 top: BorderSide(color: Colors.grey[200]!),
@@ -501,13 +531,17 @@ class _PostDetailsPageState extends State<PostDetailsPage> {
                                       ),
                                       decoration: BoxDecoration(
                                         gradient: LinearGradient(
-                                          colors: [Colors.amber[400]!, Colors.amber[300]!],
+                                          colors: [
+                                            Colors.amber[400]!,
+                                            Colors.amber[300]!
+                                          ],
                                         ),
                                         borderRadius: BorderRadius.circular(12),
                                       ),
                                       child: Row(
                                         children: [
-                                          const Icon(Icons.star, size: 16, color: Colors.white),
+                                          const Icon(Icons.star,
+                                              size: 16, color: Colors.white),
                                           const SizedBox(width: 4),
                                           Text(
                                             post.rating.toStringAsFixed(1),
@@ -528,7 +562,8 @@ class _PostDetailsPageState extends State<PostDetailsPage> {
                                       decoration: BoxDecoration(
                                         color: Colors.green[50],
                                         borderRadius: BorderRadius.circular(12),
-                                        border: Border.all(color: Colors.green[100]!),
+                                        border: Border.all(
+                                            color: Colors.green[100]!),
                                       ),
                                       child: Text(
                                         'RM ${post.price.toStringAsFixed(2)}',
@@ -542,7 +577,7 @@ class _PostDetailsPageState extends State<PostDetailsPage> {
                                   ],
                                 ),
                                 Text(
-                                  '${post.comments.length} reviews',
+                                  '${post.comments.length} comments',
                                   style: TextStyle(
                                     color: Colors.grey[600],
                                     fontSize: 14,
@@ -591,12 +626,14 @@ class _PostDetailsPageState extends State<PostDetailsPage> {
                                       borderRadius: BorderRadius.circular(12),
                                     ),
                                     child: Icon(Icons.restaurant,
-                                        color: Colors.deepPurple[400], size: 24),
+                                        color: Colors.deepPurple[400],
+                                        size: 24),
                                   ),
                                   const SizedBox(width: 16),
                                   Expanded(
                                     child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
                                         Text(
                                           post.restaurantName,
@@ -616,7 +653,8 @@ class _PostDetailsPageState extends State<PostDetailsPage> {
                                       ],
                                     ),
                                   ),
-                                  Icon(Icons.chevron_right, color: Colors.grey[400]),
+                                  Icon(Icons.chevron_right,
+                                      color: Colors.grey[400]),
                                 ],
                               ),
                             ),
@@ -631,30 +669,36 @@ class _PostDetailsPageState extends State<PostDetailsPage> {
                       child: Wrap(
                         spacing: 8,
                         runSpacing: 8,
-                        children: post.tags.map((tag) => InkWell(
-                          onTap: () {
-                            // Add tag filtering functionality
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('Showing posts tagged with #$tag')),
-                            );
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: Colors.deepPurple[50],
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(color: Colors.deepPurple[100]!),
-                            ),
-                            child: Text(
-                              '#$tag',
-                              style: TextStyle(
-                                color: Colors.deepPurple[800],
-                                fontWeight: FontWeight.w500,
-                                fontSize: 13,
-                              ),
-                            ),
-                          ),
-                        )).toList(),
+                        children: post.tags
+                            .map((tag) => InkWell(
+                                  onTap: () {
+                                    // Add tag filtering functionality
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                          content: Text(
+                                              'Showing posts tagged with #$tag')),
+                                    );
+                                  },
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 12, vertical: 6),
+                                    decoration: BoxDecoration(
+                                      color: Colors.deepPurple[50],
+                                      borderRadius: BorderRadius.circular(20),
+                                      border: Border.all(
+                                          color: Colors.deepPurple[100]!),
+                                    ),
+                                    child: Text(
+                                      '#$tag',
+                                      style: TextStyle(
+                                        color: Colors.deepPurple[800],
+                                        fontWeight: FontWeight.w500,
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                  ),
+                                ))
+                            .toList(),
                       ),
                     ),
 
@@ -670,17 +714,50 @@ class _PostDetailsPageState extends State<PostDetailsPage> {
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Text(
-                                'Reviews (${post.comments.length})',
+                                'Comments (${post.comments.length})',
                                 style: const TextStyle(
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
-                              Text(
-                                'Newest first',
-                                style: TextStyle(
-                                  color: Colors.grey[600],
-                                  fontSize: 14,
+                              InkWell(
+                                onTap: () {
+                                  setState(() {
+                                    _currentSort =
+                                        _currentSort == CommentSort.newest
+                                            ? CommentSort.oldest
+                                            : CommentSort.newest;
+                                  });
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 12, vertical: 6),
+                                  decoration: BoxDecoration(
+                                    color: Colors.grey[100],
+                                    borderRadius: BorderRadius.circular(20),
+                                    border:
+                                        Border.all(color: Colors.grey[300]!),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        Icons.sort,
+                                        size: 16,
+                                        color: Colors.grey[600],
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        _currentSort == CommentSort.newest
+                                            ? 'Newest first'
+                                            : 'Oldest first',
+                                        style: TextStyle(
+                                          color: Colors.grey[600],
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ),
                             ],
@@ -696,8 +773,8 @@ class _PostDetailsPageState extends State<PostDetailsPage> {
               SliverList(
                 delegate: SliverChildBuilderDelegate(
                   (context, index) {
-                    // Reverse the comment order by getting items from the end
-                    final comment = post.comments[post.comments.length - 1 - index];
+                    final sortedComments = _getSortedComments(post.comments);
+                    final comment = sortedComments[index];
                     return Padding(
                       padding: const EdgeInsets.symmetric(
                           horizontal: 16.0, vertical: 8.0),
@@ -705,7 +782,8 @@ class _PostDetailsPageState extends State<PostDetailsPage> {
                         comment: comment,
                         postId: post.id,
                         onDeleted: () {
-                          setState(() {}); // Refresh the UI after comment deletion
+                          setState(
+                              () {}); // Refresh the UI after comment deletion
                         },
                       ),
                     );
@@ -717,7 +795,8 @@ class _PostDetailsPageState extends State<PostDetailsPage> {
               // Bottom spacing for comment input
               SliverToBoxAdapter(
                 child: Container(
-                  height: 120, // Adjust this value based on your comment box height
+                  height:
+                      120, // Adjust this value based on your comment box height
                   color: Colors.transparent,
                 ),
               ),
@@ -743,7 +822,9 @@ class _PostDetailsPageState extends State<PostDetailsPage> {
               Container(
                 margin: const EdgeInsets.only(right: 8),
                 decoration: BoxDecoration(
-                  color: _showRating ? Colors.amber.withOpacity(0.1) : Colors.grey[50],
+                  color: _showRating
+                      ? Colors.amber.withOpacity(0.1)
+                      : Colors.grey[50],
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
                     color: _showRating ? Colors.amber : Colors.grey[300]!,
@@ -753,7 +834,8 @@ class _PostDetailsPageState extends State<PostDetailsPage> {
                 child: InkWell(
                   onTap: _showRatingBottomSheet, // Simply show the rating sheet
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -899,8 +981,10 @@ class CommentCard extends StatelessWidget {
   }
 
   void _showEditDialog(BuildContext context) {
-    final TextEditingController controller = TextEditingController(text: comment.content);
-    double rating = comment.rating ?? 0.0; // Provide default value if rating is null
+    final TextEditingController controller =
+        TextEditingController(text: comment.content);
+    double rating =
+        comment.rating ?? 0.0; // Provide default value if rating is null
     bool showRating = comment.rating != null; // Track if rating should be shown
 
     showDialog(
@@ -914,7 +998,8 @@ class CommentCard extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text('Include Rating', style: TextStyle(color: Colors.grey[600])),
+                Text('Include Rating',
+                    style: TextStyle(color: Colors.grey[600])),
                 const SizedBox(width: 8),
                 Switch(
                   value: showRating,
@@ -977,7 +1062,8 @@ class CommentCard extends StatelessWidget {
                 if (context.mounted) {
                   Navigator.pop(context);
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Comment updated successfully')),
+                    const SnackBar(
+                        content: Text('Comment updated successfully')),
                   );
                 }
               } catch (e) {
@@ -1085,17 +1171,22 @@ class CommentCard extends StatelessWidget {
                                 const SizedBox(width: 8),
                                 if (comment.rating != null)
                                   Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 8, vertical: 4),
                                     decoration: BoxDecoration(
                                       gradient: LinearGradient(
-                                        colors: [Colors.amber[400]!, Colors.amber[300]!],
+                                        colors: [
+                                          Colors.amber[400]!,
+                                          Colors.amber[300]!
+                                        ],
                                         begin: Alignment.centerLeft,
                                         end: Alignment.centerRight,
                                       ),
                                       borderRadius: BorderRadius.circular(12),
                                       boxShadow: [
                                         BoxShadow(
-                                          color: Colors.amber[200]!.withOpacity(0.3),
+                                          color: Colors.amber[200]!
+                                              .withOpacity(0.3),
                                           blurRadius: 4,
                                           offset: const Offset(0, 2),
                                         ),
@@ -1104,7 +1195,8 @@ class CommentCard extends StatelessWidget {
                                     child: Row(
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
-                                        const Icon(Icons.star, size: 12, color: Colors.white),
+                                        const Icon(Icons.star,
+                                            size: 12, color: Colors.white),
                                         const SizedBox(width: 2),
                                         Text(
                                           comment.rating!.toStringAsFixed(1),
@@ -1122,7 +1214,8 @@ class CommentCard extends StatelessWidget {
                           ),
                           if (isCommentOwner)
                             PopupMenuButton<String>(
-                              icon: Icon(Icons.more_vert, color: Colors.grey[600]),
+                              icon: Icon(Icons.more_vert,
+                                  color: Colors.grey[600]),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12),
                               ),
@@ -1142,8 +1235,8 @@ class CommentCard extends StatelessWidget {
                                           color: Colors.blue[700], size: 20),
                                       const SizedBox(width: 12),
                                       Text('Edit',
-                                          style:
-                                              TextStyle(color: Colors.blue[700])),
+                                          style: TextStyle(
+                                              color: Colors.blue[700])),
                                     ],
                                   ),
                                 ),
