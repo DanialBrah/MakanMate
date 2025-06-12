@@ -122,6 +122,7 @@ class Comment {
   final String userName;
   final String content;
   final DateTime createdAt;
+  final double? rating; // Make rating optional
 
   Comment({
     required this.id,
@@ -129,6 +130,7 @@ class Comment {
     required this.userName,
     required this.content,
     required this.createdAt,
+    this.rating, // Remove required keyword
   });
 
   Map<String, dynamic> toMap() {
@@ -138,6 +140,7 @@ class Comment {
       'userName': userName,
       'content': content,
       'createdAt': Timestamp.fromDate(createdAt),
+      'rating': rating, // This will be null if not provided
     };
   }
 
@@ -148,6 +151,7 @@ class Comment {
       userName: map['userName'] ?? '',
       content: map['content'] ?? '',
       createdAt: (map['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      rating: map['rating']?.toDouble(), // Handle nullable rating
     );
   }
 }
