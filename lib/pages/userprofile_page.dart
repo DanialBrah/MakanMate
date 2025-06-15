@@ -8,6 +8,7 @@ import '../widgets/post_card.dart';
 import '../pages/createpost_page.dart';
 import '../widgets/edit_post_dialog.dart';
 import 'edit_profile_page.dart';
+import 'login_page.dart';
 
 class UserProfilePage extends StatefulWidget {
   const UserProfilePage({super.key});
@@ -70,7 +71,12 @@ class _UserProfilePageState extends State<UserProfilePage>
     try {
       await _authService.signOut();
       if (mounted) {
-        Navigator.of(context).pushReplacementNamed('/login');
+        // Replace current route with login page
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder: (context) => const BeautifulLoginPage(),
+          ),
+        );
       }
     } catch (e) {
       if (mounted) {
@@ -91,20 +97,30 @@ class _UserProfilePageState extends State<UserProfilePage>
         return AlertDialog(
           title: const Text('Sign Out'),
           content: const Text('Are you sure you want to sign out?'),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancel'),
+              child: Text(
+                'Cancel',
+                style: TextStyle(color: Colors.grey[600]),
+              ),
             ),
-            TextButton(
+            ElevatedButton(
               onPressed: () {
                 Navigator.of(context).pop();
                 _signOut();
               },
-              child: const Text(
-                'Sign Out',
-                style: TextStyle(color: Colors.red),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
               ),
+              child: const Text('Sign Out'),
             ),
           ],
         );
@@ -153,11 +169,11 @@ class _UserProfilePageState extends State<UserProfilePage>
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                      builder: (context) => const EditProfilePage()),
+                    builder: (context) => const EditProfilePage(),
+                  ),
                 ).then((result) {
                   if (result == true) {
-                    Navigator.pop(
-                        context, true); // Pass back result to HomePage
+                    _loadUserData();
                   }
                 });
               }
