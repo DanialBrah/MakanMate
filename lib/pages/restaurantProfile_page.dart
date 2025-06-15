@@ -8,6 +8,7 @@ import '../widgets/post_card.dart';
 import '../pages/createpost_page.dart';
 import '../widgets/edit_post_dialog.dart';
 import 'edit_profile_page.dart';
+import 'create_menu_item_page.dart';
 
 class RestaurantProfilePage extends StatefulWidget {
   const RestaurantProfilePage({super.key});
@@ -30,7 +31,7 @@ class _RestaurantProfilePageState extends State<RestaurantProfilePage>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this); // Changed to 3 tabs
+    _tabController = TabController(length: 4, vsync: this); // Changed to 4 tabs
     _loadUserData();
     _calculateAverageRating();
   }
@@ -83,7 +84,7 @@ class _RestaurantProfilePageState extends State<RestaurantProfilePage>
           for (var doc in ratingsQuery.docs) {
             totalRating += (doc.data()['rating'] ?? 0).toDouble();
           }
-          
+
           setState(() {
             _averageRating = totalRating / ratingsQuery.docs.length;
             _totalReviews = ratingsQuery.docs.length;
@@ -338,6 +339,7 @@ class _RestaurantProfilePageState extends State<RestaurantProfilePage>
               indicatorColor: Colors.deepPurple[800],
               tabs: const [
                 Tab(icon: Icon(Icons.grid_on), text: 'Posts'),
+                Tab(icon: Icon(Icons.restaurant_menu), text: 'Menu'),
                 Tab(icon: Icon(Icons.rate_review), text: 'Reviews'),
                 Tab(icon: Icon(Icons.bookmark_border), text: 'Saved'),
               ],
@@ -350,6 +352,7 @@ class _RestaurantProfilePageState extends State<RestaurantProfilePage>
               controller: _tabController,
               children: [
                 _buildPostsTab(),
+                _buildMenuTab(),
                 _buildReviewsTab(),
                 _buildSavedTab(),
               ],
@@ -357,19 +360,260 @@ class _RestaurantProfilePageState extends State<RestaurantProfilePage>
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => const CreatePostPage(),
+      // floatingActionButton: FloatingActionButton(
+      //   onPressed: () {
+      //     Navigator.push(
+      //       context,
+      //       MaterialPageRoute(
+      //         builder: (context) => const CreatePostPage(),
+      //       ),
+      //     );
+      //   },
+      //   backgroundColor: Colors.deepPurple[800],
+      //   child: const Icon(Icons.add, color: Colors.white),
+      // ),
+    );
+  }
+
+  Widget _buildMenuTab() {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      return const Center(child: Text('Please sign in to view menu'));
+    }
+
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('restaurants')
+          .doc(user.uid)
+          .collection('menu')
+          .orderBy('createdAt', descending: true)
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        if (snapshot.hasError) {
+          return Center(child: Text('Error: ${snapshot.error}'));
+        }
+
+        final menuItems = snapshot.data?.docs ?? [];
+
+        return Scaffold(
+          body: menuItems.isEmpty
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.restaurant_menu,
+                        size: 64,
+                        color: Colors.grey[400],
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'No menu items yet',
+                        style: TextStyle(
+                          fontSize: 18,
+                          color: Colors.grey[600],
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Add your first menu item!',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey[500],
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              : ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: menuItems.length,
+                  itemBuilder: (context, index) {
+                    final item =
+                        menuItems[index].data() as Map<String, dynamic>;
+                    return _buildMenuItemCard(item, menuItems[index].id);
+                  },
+                ),
+          floatingActionButton: FloatingActionButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const CreateMenuItemPage(),
+                ),
+              );
+            },
+            backgroundColor: Colors.deepPurple[800],
+            child: const Icon(Icons.add, color: Colors.white),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildMenuItemCard(Map<String, dynamic> item, String itemId) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 16),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                if (item['imageUrl'] != null)
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: Image.network(
+                      item['imageUrl'],
+                      width: 80,
+                      height: 80,
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        item['name'] ?? 'Unnamed Item',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 18,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        item['description'] ?? 'No description',
+                        style: TextStyle(color: Colors.grey[600]),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        '\$${(item['price'] ?? 0).toStringAsFixed(2)}',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                          color: Colors.deepPurple,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                PopupMenuButton<String>(
+                  onSelected: (value) {
+                    if (value == 'edit') {
+                      _editMenuItem(item, itemId);
+                    } else if (value == 'delete') {
+                      _deleteMenuItem(itemId);
+                    }
+                  },
+                  itemBuilder: (BuildContext context) => [
+                    const PopupMenuItem<String>(
+                      value: 'edit',
+                      child: Row(
+                        children: [
+                          Icon(Icons.edit, size: 20),
+                          SizedBox(width: 8),
+                          Text('Edit'),
+                        ],
+                      ),
+                    ),
+                    const PopupMenuItem<String>(
+                      value: 'delete',
+                      child: Row(
+                        children: [
+                          Icon(Icons.delete, color: Colors.red, size: 20),
+                          SizedBox(width: 8),
+                          Text('Delete', style: TextStyle(color: Colors.red)),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
-          );
-        },
-        backgroundColor: Colors.deepPurple[800],
-        child: const Icon(Icons.add, color: Colors.white),
+            if (item['categories'] != null &&
+                (item['categories'] as List).isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Wrap(
+                  spacing: 4,
+                  children: (item['categories'] as List)
+                      .map<Widget>((category) => Chip(
+                            label: Text(category.toString()),
+                            backgroundColor: Colors.deepPurple[50],
+                            labelStyle: const TextStyle(fontSize: 12),
+                          ))
+                      .toList(),
+                ),
+              ),
+          ],
+        ),
       ),
     );
+  }
+
+  void _editMenuItem(Map<String, dynamic> item, String itemId) {
+    // Navigate to edit menu item page
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => CreateMenuItemPage(
+          existingItem: item,
+          itemId: itemId,
+        ),
+      ),
+    );
+  }
+
+  Future<void> _deleteMenuItem(String itemId) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    bool confirmDelete = await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Menu Item'),
+        content: const Text('Are you sure you want to delete this menu item?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text(
+              'Delete',
+              style: TextStyle(color: Colors.red),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmDelete == true) {
+      try {
+        await FirebaseFirestore.instance
+            .collection('restaurants')
+            .doc(user.uid)
+            .collection('menu')
+            .doc(itemId)
+            .delete();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Menu item deleted')),
+        );
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to delete: $e')),
+        );
+      }
+    }
   }
 
   Widget _buildStatColumn(String label, String count) {
@@ -565,18 +809,18 @@ class _RestaurantProfilePageState extends State<RestaurantProfilePage>
         }
 
         var reviews = snapshot.data?.docs ?? [];
-        
+
         // Sort reviews by date (newest first)
         reviews.sort((a, b) {
           final aData = a.data() as Map<String, dynamic>;
           final bData = b.data() as Map<String, dynamic>;
           final aTime = aData['createdAt'] as Timestamp?;
           final bTime = bData['createdAt'] as Timestamp?;
-          
+
           if (aTime == null && bTime == null) return 0;
           if (aTime == null) return 1;
           if (bTime == null) return -1;
-          
+
           return bTime.compareTo(aTime);
         });
 
@@ -685,9 +929,11 @@ class _RestaurantProfilePageState extends State<RestaurantProfilePage>
 
   String _formatDate(dynamic timestamp) {
     if (timestamp == null) return '';
-    
+
     try {
-      final date = timestamp is Timestamp ? timestamp.toDate() : DateTime.parse(timestamp.toString());
+      final date = timestamp is Timestamp
+          ? timestamp.toDate()
+          : DateTime.parse(timestamp.toString());
       final now = DateTime.now();
       final difference = now.difference(date);
 

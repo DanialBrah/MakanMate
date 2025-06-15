@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../models/post_model.dart';
 import '../services/post_service.dart';
+import '../widgets/menu_item_card.dart';
 
 class UserViewRestaurantPage extends StatefulWidget {
   final Map<String, dynamic> restaurantData;
@@ -249,18 +250,26 @@ class _UserViewRestaurantPageState extends State<UserViewRestaurantPage>
   }
 
   Widget _buildMenuTab() {
-    return StreamBuilder<List<Post>>(
-      stream: _postService.getUserPosts(widget.restaurantData['uid']),
+    final user = FirebaseAuth.instance.currentUser;
+    final restaurantId = widget.restaurantData['uid'];
+
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('restaurants')
+          .doc(restaurantId)
+          .collection('menu')
+          .orderBy('createdAt', descending: true)
+          .snapshots(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
         }
 
         if (snapshot.hasError) {
-          return const Center(child: Text('Error loading menu'));
+          return Center(child: Text('Error loading menu: ${snapshot.error}'));
         }
 
-        final menuItems = snapshot.data ?? [];
+        final menuItems = snapshot.data?.docs ?? [];
 
         if (menuItems.isEmpty) {
           return Center(
@@ -282,80 +291,87 @@ class _UserViewRestaurantPageState extends State<UserViewRestaurantPage>
           padding: const EdgeInsets.all(16),
           itemCount: menuItems.length,
           itemBuilder: (context, index) {
-            final item = menuItems[index];
-            return _buildMenuItemCard(item);
+            final item = menuItems[index].data() as Map<String, dynamic>;
+            return MenuItemCard(
+              menuItem: {
+                ...item,
+                'id': menuItems[index].id,
+              },
+              restaurantId: restaurantId,
+              onRateItem: (menuItemId) => _showMenuItemRatingDialog(menuItemId),
+            );
           },
         );
       },
     );
   }
 
-  Widget _buildMenuItemCard(Post menuItem) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 16),
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (menuItem.imageUrl != null && menuItem.imageUrl!.isNotEmpty)
-              ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: Image.network(
-                  menuItem.imageUrl!,
-                  height: 150,
-                  width: double.infinity,
-                  fit: BoxFit.cover,
-                ),
-              ),
-            const SizedBox(height: 12),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: Text(
-                    menuItem.title,
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-                _buildRatingButton(menuItem.id),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              menuItem.description,
-              style: TextStyle(color: Colors.grey[600]),
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Icon(Icons.star, color: Colors.amber, size: 20),
-                const SizedBox(width: 4),
-                StreamBuilder<double>(
-                  stream: _getMenuItemRating(menuItem.id),
-                  builder: (context, snapshot) {
-                    final rating = snapshot.data ?? 0.0;
-                    return Text(
-                      rating > 0 ? rating.toStringAsFixed(1) : 'Not rated',
-                      style: TextStyle(
-                        color: Colors.grey[600],
-                        fontWeight: FontWeight.w500,
-                      ),
-                    );
-                  },
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  // Widget _buildMenuItemCard(Post menuItem) {
+  //   return Card(
+  //     margin: const EdgeInsets.only(bottom: 16),
+  //     elevation: 4,
+  //     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+  //     child: Padding(
+  //       padding: const EdgeInsets.all(16),
+  //       child: Column(
+  //         crossAxisAlignment: CrossAxisAlignment.start,
+  //         children: [
+  //           if (menuItem.imageUrl != null && menuItem.imageUrl!.isNotEmpty)
+  //             ClipRRect(
+  //               borderRadius: BorderRadius.circular(12),
+  //               child: Image.network(
+  //                 menuItem.imageUrl!,
+  //                 height: 150,
+  //                 width: double.infinity,
+  //                 fit: BoxFit.cover,
+  //               ),
+  //             ),
+  //           const SizedBox(height: 12),
+  //           Row(
+  //             mainAxisAlignment: MainAxisAlignment.spaceBetween,
+  //             children: [
+  //               Expanded(
+  //                 child: Text(
+  //                   menuItem.title,
+  //                   style: const TextStyle(
+  //                     fontSize: 18,
+  //                     fontWeight: FontWeight.bold,
+  //                   ),
+  //                 ),
+  //               ),
+  //               _buildRatingButton(menuItem.id),
+  //             ],
+  //           ),
+  //           const SizedBox(height: 8),
+  //           Text(
+  //             menuItem.description,
+  //             style: TextStyle(color: Colors.grey[600]),
+  //           ),
+  //           const SizedBox(height: 12),
+  //           Row(
+  //             children: [
+  //               Icon(Icons.star, color: Colors.amber, size: 20),
+  //               const SizedBox(width: 4),
+  //               StreamBuilder<double>(
+  //                 stream: _getMenuItemRating(menuItem.id),
+  //                 builder: (context, snapshot) {
+  //                   final rating = snapshot.data ?? 0.0;
+  //                   return Text(
+  //                     rating > 0 ? rating.toStringAsFixed(1) : 'Not rated',
+  //                     style: TextStyle(
+  //                       color: Colors.grey[600],
+  //                       fontWeight: FontWeight.w500,
+  //                     ),
+  //                   );
+  //                 },
+  //               ),
+  //             ],
+  //           ),
+  //         ],
+  //       ),
+  //     ),
+  //   );
+  // }
 
   Widget _buildRatingButton(String postId) {
     return ElevatedButton.icon(
@@ -439,6 +455,40 @@ class _UserViewRestaurantPageState extends State<UserViewRestaurantPage>
   }
 
   Widget _buildReviewCard(Map<String, dynamic> review) {
+    // Only fetch menu item if this review is for a specific menu item
+    final bool isMenuItemReview = review['menuItemId'] != null;
+
+    return isMenuItemReview
+        ? FutureBuilder<DocumentSnapshot>(
+            future: FirebaseFirestore.instance
+                .collection('restaurants')
+                .doc(widget.restaurantData['uid'])
+                .collection('menu')
+                .doc(review['menuItemId'])
+                .get(),
+            builder: (context, menuItemSnapshot) {
+              if (menuItemSnapshot.connectionState == ConnectionState.waiting) {
+                return _buildReviewCardContent(review);
+              }
+
+              if (menuItemSnapshot.hasError || !menuItemSnapshot.hasData) {
+                return _buildReviewCardContent(review);
+              }
+
+              final menuItemName = menuItemSnapshot.data!.exists
+                  ? (menuItemSnapshot.data!.data()
+                      as Map<String, dynamic>)['name']
+                  : 'Deleted Item';
+
+              return _buildReviewCardContent(review,
+                  menuItemName: menuItemName);
+            },
+          )
+        : _buildReviewCardContent(review);
+  }
+
+  Widget _buildReviewCardContent(Map<String, dynamic> review,
+      {String? menuItemName}) {
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
       child: Padding(
@@ -489,7 +539,7 @@ class _UserViewRestaurantPageState extends State<UserViewRestaurantPage>
               const SizedBox(height: 12),
               Text(review['comment']),
             ],
-            if (review['postId'] != null) ...[
+            if (menuItemName != null) ...[
               const SizedBox(height: 8),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -498,7 +548,7 @@ class _UserViewRestaurantPageState extends State<UserViewRestaurantPage>
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
-                  'Menu Item Review',
+                  'Review for: $menuItemName',
                   style: TextStyle(
                     color: Colors.deepPurple[800],
                     fontSize: 12,
@@ -710,13 +760,13 @@ class _UserViewRestaurantPageState extends State<UserViewRestaurantPage>
   }
 
   Future<void> _submitMenuItemRating(
-      String postId, int rating, String comment) async {
+      String menuItemId, int rating, String comment) async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
     try {
       await FirebaseFirestore.instance.collection('ratings').add({
-        'postId': postId,
+        'menuItemId': menuItemId, // Important for linking to menu items
         'restaurantId': widget.restaurantData['uid'],
         'userId': user.uid,
         'userName': user.displayName ?? 'Anonymous',
