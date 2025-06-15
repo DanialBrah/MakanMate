@@ -199,4 +199,22 @@ class PostService {
       }).toList();
     });
   }
+
+  // OR if you want a separate implementation:
+  Stream<List<Post>> getPostsByUserId(String userId) {
+    return _firestore
+        .collection('posts')
+        .where('userId', isEqualTo: userId)
+        .snapshots()
+        .map((snapshot) {
+      List<Post> posts = snapshot.docs.map((doc) {
+        return Post.fromMap(doc.data(), doc.id);
+      }).toList();
+
+      // Sort in memory instead of in the query
+      posts.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
+      return posts;
+    });
+  }
 }
