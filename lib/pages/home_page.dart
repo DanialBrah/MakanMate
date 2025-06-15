@@ -4,9 +4,11 @@ import '../models/post_model.dart';
 import '../services/post_service.dart';
 import '../pages/createpost_page.dart';
 import '../pages/userprofile_page.dart';
+import '../pages/restaurantProfile_page.dart';
 import '../widgets/post_card.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../widgets/edit_post_dialog.dart';
+import '../pages/RestaurantSearchPage.dart';
 
 class HomePage extends StatefulWidget {
   final String userRole;
@@ -20,6 +22,7 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   final PostService _postService = PostService();
   String _firestoreUsername = 'User';
+  String _firestoreUserRole = 'Member'; // default role
   String? _userProfileUrl;
   int _selectedIndex = 0;
 
@@ -43,25 +46,15 @@ class _HomePageState extends State<HomePage> {
   List<String> _availableTags = [];
 
   void _onBottomNavTap(int index) {
-    if (index == 2) {
-      // Create Post button
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => const CreatePostPage()),
-      );
-    } else {
-      setState(() {
-        _selectedIndex = index;
-      });
-    }
+    setState(() {
+      _selectedIndex = index;
+    });
   }
 
   @override
   void initState() {
     super.initState();
-    _loadUserProfileData();
-    _loadFilterOptions();
-    _priceController.text = _maxPrice.toString();
+    _loadUsernameAndRoleFromFirestore();
   }
 
   @override
@@ -71,7 +64,7 @@ class _HomePageState extends State<HomePage> {
     super.dispose();
   }
 
-  Future<void> _loadUserProfileData() async {
+  Future<void> _loadUsernameAndRoleFromFirestore() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
       final doc = await FirebaseFirestore.instance
@@ -80,9 +73,10 @@ class _HomePageState extends State<HomePage> {
           .get();
 
       if (doc.exists && doc.data() != null) {
+        final data = doc.data()!;
         setState(() {
-          _firestoreUsername = doc.data()!['username'] ?? 'User';
-          _userProfileUrl = doc.data()!['profilePicture'];
+          _firestoreUsername = data['username'] ?? 'User';
+          _firestoreUserRole = data['role'] ?? 'Member';
         });
       }
     }
@@ -534,25 +528,34 @@ class _HomePageState extends State<HomePage> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.grey[50],
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        title: Text('Hello $_firestoreUsername!',
-            style: const TextStyle(
-                color: Colors.black, fontWeight: FontWeight.bold)),
-        actions: [
-          IconButton(
+Widget build(BuildContext context) {
+  final List<Widget> _pages = [
+    _buildHomeContent(),
+    const RestaurantSearchPage(),
+    const SizedBox(),
+    // const ChatPageContent(),
+    // const MapPageContent(),
+  ];
+
+  return Scaffold(
+    backgroundColor: Colors.grey[50],
+    appBar: AppBar(
+      backgroundColor: Colors.white,
+      elevation: 0,
+      title: Text('Hello $_firestoreUsername!',
+          style: const TextStyle(
+              color: Colors.black, fontWeight: FontWeight.bold)),
+      actions: [
+        IconButton(
             icon: const Icon(Icons.filter_alt_outlined),
             onPressed: _showFilterDialog,
             tooltip: 'Filter Posts',
           ),
-          Padding(
-            padding: const EdgeInsets.only(right: 16.0),
-            child: GestureDetector(
-              onTap: () {
+        Padding(
+          padding: const EdgeInsets.only(right: 16.0),
+          child: GestureDetector(
+            onTap: () {
+              if (_firestoreUserRole == 'User') {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
@@ -560,275 +563,58 @@ class _HomePageState extends State<HomePage> {
                   ),
                 ).then((result) {
                   if (result == true) {
-                    _loadUserProfileData();
+                    _loadUsernameAndRoleFromFirestore();
                   }
                 });
-              },
-              child: Container(
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: Colors.grey[300]!,
-                    width: 2,
+              } else if (_firestoreUserRole == 'Restaurant Owner') {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const RestaurantProfilePage(),
                   ),
-                ),
-                child: CircleAvatar(
-                  radius: 18,
-                  backgroundColor: Colors.deepPurple[100],
-                  backgroundImage: _userProfileUrl != null
-                      ? NetworkImage(_userProfileUrl!)
-                      : null,
-                  child: _userProfileUrl == null
-                      ? Text(
-                          _firestoreUsername.isNotEmpty
-                              ? _firestoreUsername[0].toUpperCase()
-                              : 'U',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        )
-                      : null,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-      body: Column(
-        children: [
-          // Search Bar
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: TextField(
-              decoration: InputDecoration(
-                hintText: 'Search posts, food, restaurants...',
-                prefixIcon: const Icon(Icons.search),
-                suffixIcon: _searchQuery.isNotEmpty
-                    ? IconButton(
-                        icon: const Icon(Icons.clear),
-                        onPressed: () {
-                          setState(() {
-                            _searchQuery = '';
-                          });
-                        },
+                ).then((result) {
+                  if (result == true) {
+                    _loadUsernameAndRoleFromFirestore();
+                  }
+                });
+              }
+            },
+            child: Chip(
+              avatar: CircleAvatar(
+                radius: 18,
+                backgroundColor: Colors.deepPurple[100],
+                backgroundImage: _userProfileUrl != null
+                    ? NetworkImage(_userProfileUrl!)
+                    : null,
+                child: _userProfileUrl == null
+                    ? Text(
+                        _firestoreUsername.isNotEmpty
+                            ? _firestoreUsername[0].toUpperCase()
+                            : 'U',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
                       )
                     : null,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
+              ),
+              label: Text(
+                _firestoreUserRole,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
                 ),
-                filled: true,
-                fillColor: Colors.white,
               ),
-              onChanged: (value) {
-                setState(() {
-                  _searchQuery = value;
-                });
-              },
+              backgroundColor: Colors.deepPurple[800],
             ),
           ),
-
-          // Posts Section
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'What Would You Like\nTo Make Today?',
-                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'Posts For You',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 16),
-                  Expanded(
-                    child: StreamBuilder<List<Post>>(
-                      stream: _postService.getAllPosts(),
-                      builder: (context, snapshot) {
-                        if (snapshot.connectionState ==
-                            ConnectionState.waiting) {
-                          return const Center(
-                            child: CircularProgressIndicator(),
-                          );
-                        }
-
-                        if (snapshot.hasError) {
-                          return Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  Icons.error_outline,
-                                  size: 64,
-                                  color: Colors.grey[400],
-                                ),
-                                const SizedBox(height: 16),
-                                Text(
-                                  'Something went wrong',
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    color: Colors.grey[600],
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  'Please try again later',
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    color: Colors.grey[500],
-                                  ),
-                                ),
-                                const SizedBox(height: 16),
-                                ElevatedButton(
-                                  onPressed: () {
-                                    setState(() {});
-                                  },
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.deepPurple[800],
-                                    foregroundColor: Colors.white,
-                                  ),
-                                  child: const Text('Retry'),
-                                ),
-                              ],
-                            ),
-                          );
-                        }
-
-                        final allPosts = snapshot.data ?? [];
-                        final filteredPosts = _filterPosts(allPosts);
-
-                        if (filteredPosts.isEmpty && allPosts.isNotEmpty) {
-                          return Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  Icons.search_off,
-                                  size: 64,
-                                  color: Colors.grey[400],
-                                ),
-                                const SizedBox(height: 16),
-                                Text(
-                                  'No posts match your filters',
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    color: Colors.grey[600],
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  'Try adjusting your search criteria',
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    color: Colors.grey[500],
-                                  ),
-                                ),
-                                const SizedBox(height: 16),
-                                ElevatedButton(
-                                  onPressed: _clearFilters,
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.deepPurple[800],
-                                    foregroundColor: Colors.white,
-                                  ),
-                                  child: const Text('Clear Filters'),
-                                ),
-                              ],
-                            ),
-                          );
-                        }
-
-                        if (allPosts.isEmpty) {
-                          return Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  Icons.restaurant_menu,
-                                  size: 64,
-                                  color: Colors.grey[400],
-                                ),
-                                const SizedBox(height: 16),
-                                Text(
-                                  'No posts yet',
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    color: Colors.grey[600],
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  'Be the first to share a recipe!',
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    color: Colors.grey[500],
-                                  ),
-                                ),
-                                const SizedBox(height: 24),
-                                ElevatedButton.icon(
-                                  onPressed: () {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (context) =>
-                                            const CreatePostPage(),
-                                      ),
-                                    );
-                                  },
-                                  icon: const Icon(Icons.add),
-                                  label: const Text('Create Post'),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.deepPurple[800],
-                                    foregroundColor: Colors.white,
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 24,
-                                      vertical: 12,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          );
-                        }
-
-                        return RefreshIndicator(
-                          onRefresh: () async {
-                            setState(() {});
-                            await _loadFilterOptions();
-                          },
-                          child: ListView.builder(
-                            itemCount: filteredPosts.length,
-                            itemBuilder: (context, index) {
-                              final post = filteredPosts[index];
-                              return Padding(
-                                padding: const EdgeInsets.only(bottom: 16.0),
-                                child: PostCard(
-                                  post: post,
-                                  onLike: () => _handleLike(post.id),
-                                  onComment: () => _handleComment(post),
-                                  onEdit: () => _handleEdit(context, post),
-                                  onDelete: () => _handleDelete(post.id),
-                                ),
-                              );
-                            },
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
+    ),
+body: _selectedIndex == 2
+          ? const CreatePostPage()
+          : _pages[_selectedIndex],
       bottomNavigationBar: BottomNavigationBar(
         type: BottomNavigationBarType.fixed,
         selectedItemColor: Colors.deepPurple[800],
@@ -838,13 +624,246 @@ class _HomePageState extends State<HomePage> {
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
           BottomNavigationBarItem(icon: Icon(Icons.search), label: 'Search'),
-          BottomNavigationBarItem(
-              icon: Icon(Icons.add_circle, size: 40), label: ''),
-          BottomNavigationBarItem(
-              icon: Icon(Icons.chat_bubble_outline), label: 'Chat'),
+          BottomNavigationBarItem(icon: Icon(Icons.add_circle, size: 40), label: ''),
+          BottomNavigationBarItem(icon: Icon(Icons.chat_bubble_outline), label: 'Chat'),
           BottomNavigationBarItem(icon: Icon(Icons.map), label: 'Map'),
         ],
       ),
+    );
+  }
+
+  Widget _buildHomeContent() {
+    return Column(
+      children: [
+        // Search Bar
+        Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: TextField(
+            decoration: InputDecoration(
+              hintText: 'Search posts, food, restaurants...',
+              prefixIcon: const Icon(Icons.search),
+              suffixIcon: _searchQuery.isNotEmpty
+                  ? IconButton(
+                      icon: const Icon(Icons.clear),
+                      onPressed: () {
+                        setState(() {
+                          _searchQuery = '';
+                        });
+                      },
+                    )
+                  : null,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none,
+              ),
+              filled: true,
+              fillColor: Colors.white,
+            ),
+            onChanged: (value) {
+              setState(() {
+                _searchQuery = value;
+              });
+            },
+          ),
+        ),
+
+        // Posts Section
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'What Would You Like\nTo Make Today?',
+                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'Posts For You',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 16),
+                Expanded(
+                  child: StreamBuilder<List<Post>>(
+                    stream: _postService.getAllPosts(),
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(
+                          child: CircularProgressIndicator(),
+                        );
+                      }
+
+                      if (snapshot.hasError) {
+                        return Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.error_outline,
+                                size: 64,
+                                color: Colors.grey[400],
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                'Something went wrong',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  color: Colors.grey[600],
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                'Please try again later',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.grey[500],
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              ElevatedButton(
+                                onPressed: () {
+                                  setState(() {});
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.deepPurple[800],
+                                  foregroundColor: Colors.white,
+                                ),
+                                child: const Text('Retry'),
+                              ),
+                            ],
+                          ),
+                        );
+                      }
+
+                      final allPosts = snapshot.data ?? [];
+                      final filteredPosts = _filterPosts(allPosts);
+
+                      if (filteredPosts.isEmpty && allPosts.isNotEmpty) {
+                        return Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.search_off,
+                                size: 64,
+                                color: Colors.grey[400],
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                'No posts match your filters',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  color: Colors.grey[600],
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                'Try adjusting your search criteria',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.grey[500],
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              ElevatedButton(
+                                onPressed: _clearFilters,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.deepPurple[800],
+                                  foregroundColor: Colors.white,
+                                ),
+                                child: const Text('Clear Filters'),
+                              ),
+                            ],
+                          ),
+                        );
+                      }
+
+                      if (allPosts.isEmpty) {
+                        return Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.restaurant_menu,
+                                size: 64,
+                                color: Colors.grey[400],
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                'No posts yet',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  color: Colors.grey[600],
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                'Be the first to share a recipe!',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.grey[500],
+                                ),
+                              ),
+                              const SizedBox(height: 24),
+                              ElevatedButton.icon(
+                                onPressed: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => const CreatePostPage(),
+                                    ),
+                                  );
+                                },
+                                icon: const Icon(Icons.add),
+                                label: const Text('Create Post'),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.deepPurple[800],
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 24,
+                                    vertical: 12,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }
+
+                      return RefreshIndicator(
+                        onRefresh: () async {
+                          setState(() {});
+                          await _loadFilterOptions();
+                        },
+                        child: ListView.builder(
+                          itemCount: filteredPosts.length,
+                          itemBuilder: (context, index) {
+                            final post = filteredPosts[index];
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 16.0),
+                              child: PostCard(
+                                post: post,
+                                onLike: () => _handleLike(post.id),
+                                onComment: () => _handleComment(post),
+                                onEdit: () => _handleEdit(context, post),
+                                onDelete: () => _handleDelete(post.id),
+                              ),
+                            );
+                          },
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 
