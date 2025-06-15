@@ -200,6 +200,7 @@ class PostService {
     });
   }
 
+
   // OR if you want a separate implementation:
   Stream<List<Post>> getPostsByUserId(String userId) {
     return _firestore
@@ -216,5 +217,61 @@ class PostService {
 
       return posts;
     });
+  }
+
+  // Get a single post stream
+  Stream<Post> getPostStream(String postId) {
+    return _firestore.collection('posts').doc(postId).snapshots().map((doc) {
+      if (doc.exists) {
+        return Post.fromMap(doc.data()!, doc.id);
+      }
+      throw Exception('Post not found');
+    });
+  }
+
+  Future<void> deleteComment(String postId, String commentId) async {
+    try {
+      final postRef = _firestore.collection('posts').doc(postId);
+      final post = await postRef.get();
+
+      if (!post.exists) return;
+
+      List<Map<String, dynamic>> comments =
+          List<Map<String, dynamic>>.from(post.data()?['comments'] ?? []);
+
+      comments.removeWhere((comment) => comment['id'] == commentId);
+
+      await postRef.update({
+        'comments': comments,
+      });
+    } catch (e) {
+      print('Error deleting comment: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> updateComment(String postId, Comment updatedComment) async {
+    try {
+      final postRef = _firestore.collection('posts').doc(postId);
+      final post = await postRef.get();
+
+      if (!post.exists) return;
+
+      List<Map<String, dynamic>> comments =
+          List<Map<String, dynamic>>.from(post.data()?['comments'] ?? []);
+
+      final index =
+          comments.indexWhere((comment) => comment['id'] == updatedComment.id);
+      if (index != -1) {
+        comments[index] = updatedComment.toMap();
+
+        await postRef.update({
+          'comments': comments,
+        });
+      }
+    } catch (e) {
+      print('Error updating comment: $e');
+      rethrow;
+    }
   }
 }
