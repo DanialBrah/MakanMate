@@ -69,14 +69,18 @@ class _UserProfilePageState extends State<UserProfilePage>
 
   Future<void> _signOut() async {
     try {
+      // Cancel any active listeners before signing out
+      _tabController.dispose();
+
       await _authService.signOut();
+
       if (mounted) {
-        // Clear the entire navigation stack and go to login
+        // Navigate immediately to login page
         Navigator.of(context).pushAndRemoveUntil(
           MaterialPageRoute(
             builder: (context) => const BeautifulLoginPage(),
           ),
-          (route) => false, // This removes all previous routes
+          (route) => false,
         );
       }
     } catch (e) {
