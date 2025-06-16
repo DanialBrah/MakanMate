@@ -4,6 +4,8 @@ import 'package:firebase_core/firebase_core.dart';
 import 'dart:async';
 import './pages/login_page.dart';
 import 'firebase_options.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'pages/home_page.dart'; // <-- New import
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -51,7 +53,16 @@ class MyApp extends StatelessWidget {
           ),
         ),
       ),
-      home: const SplashScreen(),
+      routes: {
+        '/': (context) => HomePage(
+              userRole: FirebaseAuth.instance.currentUser != null
+                  ? 'User' // You might want to fetch the actual role from Firestore
+                  : 'User',
+            ),
+        '/login': (context) => const BeautifulLoginPage(),
+      },
+      // Specify initial route based on auth state
+      initialRoute: FirebaseAuth.instance.currentUser == null ? '/login' : '/',
     );
   }
 }

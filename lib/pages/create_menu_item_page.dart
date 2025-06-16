@@ -146,19 +146,47 @@ class _CreateMenuItemPageState extends State<CreateMenuItemPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.black),
+          onPressed: () => Navigator.pop(context),
+        ),
         title: Text(
-            widget.existingItem != null ? 'Edit Menu Item' : 'Add Menu Item'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.save),
-            onPressed: _isLoading ? null : _saveMenuItem,
+          widget.existingItem != null ? 'Edit Menu Item' : 'Create Menu Item',
+          style: const TextStyle(
+            color: Colors.black,
+            fontWeight: FontWeight.bold,
           ),
+        ),
+        actions: [
+          if (_isLoading)
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16.0),
+                child: SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+              ),
+            )
+          else
+            TextButton.icon(
+              onPressed: _saveMenuItem,
+              icon: const Icon(Icons.save_outlined),
+              label: const Text('Save'),
+              style: TextButton.styleFrom(
+                foregroundColor: Colors.deepPurple[800],
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+              ),
+            ),
         ],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(20),
               child: Form(
                 key: _formKey,
                 child: Column(
@@ -167,113 +195,190 @@ class _CreateMenuItemPageState extends State<CreateMenuItemPage> {
                     GestureDetector(
                       onTap: _pickImage,
                       child: Container(
-                        height: 200,
+                        height: 220,
                         width: double.infinity,
                         decoration: BoxDecoration(
-                          color: Colors.grey[200],
-                          borderRadius: BorderRadius.circular(8),
+                          color: Colors.grey[100],
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.1),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
                         ),
-                        child: _imageFile != null
-                            ? Image.file(_imageFile!, fit: BoxFit.cover)
-                            : widget.existingItem != null &&
-                                    widget.existingItem!['imageUrl'] != null
-                                ? Image.network(
-                                    widget.existingItem!['imageUrl'],
-                                    fit: BoxFit.cover,
-                                  )
-                                : const Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(Icons.add_a_photo, size: 48),
-                                      SizedBox(height: 8),
-                                      Text('Add Photo'),
-                                    ],
-                                  ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(16),
+                          child: _imageFile != null
+                              ? Image.file(_imageFile!, fit: BoxFit.cover)
+                              : widget.existingItem != null &&
+                                      widget.existingItem!['imageUrl'] != null
+                                  ? Image.network(
+                                      widget.existingItem!['imageUrl'],
+                                      fit: BoxFit.cover,
+                                    )
+                                  : Column(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        Icon(
+                                          Icons.add_photo_alternate_outlined,
+                                          size: 48,
+                                          color: Colors.grey[400],
+                                        ),
+                                        const SizedBox(height: 12),
+                                        Text(
+                                          'Add Menu Item Photo',
+                                          style: TextStyle(
+                                            color: Colors.grey[600],
+                                            fontSize: 16,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                        ),
                       ),
+                    ),
+                    const SizedBox(height: 24),
+                    _buildTextField(
+                      controller: _nameController,
+                      label: 'Item Name',
+                      hint: 'Enter the name of your menu item',
+                      validator: (value) =>
+                          value?.isEmpty ?? true ? 'Please enter a name' : null,
                     ),
                     const SizedBox(height: 20),
-                    TextFormField(
-                      controller: _nameController,
-                      decoration: const InputDecoration(
-                        labelText: 'Item Name',
-                        border: OutlineInputBorder(),
-                      ),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Please enter a name';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    TextFormField(
+                    _buildTextField(
                       controller: _descriptionController,
-                      decoration: const InputDecoration(
-                        labelText: 'Description',
-                        border: OutlineInputBorder(),
-                      ),
+                      label: 'Description',
+                      hint: 'Describe your menu item',
                       maxLines: 3,
                     ),
-                    const SizedBox(height: 16),
-                    TextFormField(
+                    const SizedBox(height: 20),
+                    _buildTextField(
                       controller: _priceController,
-                      decoration: const InputDecoration(
-                        labelText: 'Price',
-                        border: OutlineInputBorder(),
-                        prefixText: '\$',
-                      ),
+                      label: 'Price',
+                      hint: 'Enter price',
+                      prefix: '\$',
                       keyboardType:
-                          TextInputType.numberWithOptions(decimal: true),
+                          const TextInputType.numberWithOptions(decimal: true),
                       validator: (value) {
-                        if (value == null || value.isEmpty) {
+                        if (value?.isEmpty ?? true)
                           return 'Please enter a price';
-                        }
-                        if (double.tryParse(value) == null) {
+                        if (double.tryParse(value!) == null) {
                           return 'Please enter a valid price';
                         }
                         return null;
                       },
                     ),
-                    const SizedBox(height: 16),
-                    const Text(
+                    const SizedBox(height: 24),
+                    Text(
                       'Categories',
-                      style: TextStyle(fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.grey[800],
+                      ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 12),
                     Wrap(
                       spacing: 8,
                       runSpacing: 8,
-                      children: _categories
-                          .map((category) => Chip(
-                                label: Text(category),
-                                deleteIcon: const Icon(Icons.close, size: 16),
-                                onDeleted: () => _removeCategory(category),
-                              ))
-                          .toList(),
+                      children: _categories.map((category) {
+                        return Chip(
+                          label: Text(category),
+                          deleteIcon: const Icon(Icons.close, size: 16),
+                          onDeleted: () => _removeCategory(category),
+                          backgroundColor: Colors.deepPurple[50],
+                          labelStyle: TextStyle(color: Colors.deepPurple[800]),
+                          deleteIconColor: Colors.deepPurple[800],
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                        );
+                      }).toList(),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 12),
                     Row(
                       children: [
                         Expanded(
-                          child: TextFormField(
+                          child: _buildTextField(
                             controller: _categoryController,
-                            decoration: const InputDecoration(
-                              labelText: 'Add Category',
-                              border: OutlineInputBorder(),
-                            ),
-                            onFieldSubmitted: (_) => _addCategory(),
+                            label: 'Add Category',
+                            hint: 'Type and press add',
+                            onSubmitted: (_) => _addCategory(),
                           ),
                         ),
+                        const SizedBox(width: 12),
                         IconButton(
-                          icon: const Icon(Icons.add),
+                          icon: Icon(
+                            Icons.add_circle,
+                            color: Colors.deepPurple[800],
+                            size: 32,
+                          ),
                           onPressed: _addCategory,
                         ),
                       ],
                     ),
+                    const SizedBox(height: 32),
                   ],
                 ),
               ),
             ),
+    );
+  }
+
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String label,
+    required String hint,
+    String? prefix,
+    int maxLines = 1,
+    TextInputType? keyboardType,
+    String? Function(String?)? validator,
+    void Function(String)? onSubmitted,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            color: Colors.grey[800],
+          ),
+        ),
+        const SizedBox(height: 8),
+        TextFormField(
+          controller: controller,
+          decoration: InputDecoration(
+            hintText: hint,
+            hintStyle: TextStyle(color: Colors.grey[400]),
+            prefixText: prefix,
+            filled: true,
+            fillColor: Colors.grey[50],
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: Colors.grey[300]!),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: Colors.grey[300]!),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: Colors.deepPurple[800]!),
+            ),
+            contentPadding: const EdgeInsets.all(16),
+          ),
+          maxLines: maxLines,
+          keyboardType: keyboardType,
+          validator: validator,
+          onFieldSubmitted: onSubmitted,
+        ),
+      ],
     );
   }
 }

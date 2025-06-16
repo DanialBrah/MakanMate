@@ -103,6 +103,20 @@ class AuthService {
     return null;
   }
 
+  // Verify user role
+  Future<bool> verifyUserRole(String uid, String expectedRole) async {
+    try {
+      final userDoc = await _firestore.collection('users').doc(uid).get();
+      if (userDoc.exists) {
+        final userRole = userDoc.data()?['role'];
+        return userRole == expectedRole;
+      }
+      return false;
+    } catch (e) {
+      throw Exception('Failed to verify user role: ${e.toString()}');
+    }
+  }
+
   // Handle Firebase Auth exceptions
   String _handleAuthException(FirebaseAuthException e) {
     switch (e.code) {

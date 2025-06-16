@@ -35,6 +35,19 @@ class _BeautifulLoginPageState extends State<BeautifulLoginPage> {
   Future<void> _handleLogin() async {
     if (!_formKey.currentState!.validate()) return;
 
+    if (_selectedRole == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Please select your role'),
+          behavior: SnackBarBehavior.floating,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
     setState(() => _isLoading = true);
 
     try {
@@ -44,27 +57,50 @@ class _BeautifulLoginPageState extends State<BeautifulLoginPage> {
       );
 
       if (userCredential != null) {
+        // Verify user role
+        final isRoleValid = await _authService.verifyUserRole(
+          userCredential.user!.uid,
+          _selectedRole!,
+        );
+
+        if (!isRoleValid) {
+          if (!mounted) return;
+
+          // Sign out if role doesn't match
+          await _authService.signOut();
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text('Invalid role selected for this account'),
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
+              backgroundColor: Colors.red,
+            ),
+          );
+          setState(() => _isLoading = false);
+          return;
+        }
+
         // Update last login time
         await _authService.updateLastLogin();
 
         if (!mounted) return;
 
-        // Navigate to home page based on role
+        // Navigate to home page with verified role
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
-            builder: (context) => HomePage(userRole: _selectedRole ?? 'User'),
+            builder: (context) => HomePage(userRole: _selectedRole!),
           ),
         );
 
-        // Show success message
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: const Text('Login successful!'),
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             backgroundColor: Colors.green,
           ),
         );
@@ -76,9 +112,8 @@ class _BeautifulLoginPageState extends State<BeautifulLoginPage> {
         SnackBar(
           content: Text(e.toString()),
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           backgroundColor: Colors.red,
         ),
       );

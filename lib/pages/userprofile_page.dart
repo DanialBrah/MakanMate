@@ -71,11 +71,12 @@ class _UserProfilePageState extends State<UserProfilePage>
     try {
       await _authService.signOut();
       if (mounted) {
-        // Replace current route with login page
-        Navigator.of(context).pushReplacement(
+        // Clear the entire navigation stack and go to login
+        Navigator.of(context).pushAndRemoveUntil(
           MaterialPageRoute(
             builder: (context) => const BeautifulLoginPage(),
           ),
+          (route) => false, // This removes all previous routes
         );
       }
     } catch (e) {

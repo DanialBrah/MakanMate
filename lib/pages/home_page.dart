@@ -9,6 +9,7 @@ import '../widgets/post_card.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../widgets/edit_post_dialog.dart';
 import '../pages/RestaurantSearchPage.dart';
+import '../pages/create_menu_item_page.dart';
 
 class HomePage extends StatefulWidget {
   final String userRole;
@@ -46,9 +47,21 @@ class _HomePageState extends State<HomePage> {
   List<String> _availableTags = [];
 
   void _onBottomNavTap(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
+    if (index == 2) {
+      // Plus button index
+      if (_firestoreUserRole == 'Restaurant Owner') {
+        _showCreateOptionsDialog();
+      } else {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const CreatePostPage()),
+        );
+      }
+    } else {
+      setState(() {
+        _selectedIndex = index;
+      });
+    }
   }
 
   @override
@@ -528,93 +541,91 @@ class _HomePageState extends State<HomePage> {
   }
 
   @override
-Widget build(BuildContext context) {
-  final List<Widget> _pages = [
-    _buildHomeContent(),
-    const RestaurantSearchPage(),
-    const SizedBox(),
-    // const ChatPageContent(),
-    // const MapPageContent(),
-  ];
+  Widget build(BuildContext context) {
+    final List<Widget> _pages = [
+      _buildHomeContent(),
+      const RestaurantSearchPage(),
+      const SizedBox(),
+      // const ChatPageContent(),
+      // const MapPageContent(),
+    ];
 
-  return Scaffold(
-    backgroundColor: Colors.grey[50],
-    appBar: AppBar(
-      backgroundColor: Colors.white,
-      elevation: 0,
-      title: Text('Hello $_firestoreUsername!',
-          style: const TextStyle(
-              color: Colors.black, fontWeight: FontWeight.bold)),
-      actions: [
-        IconButton(
+    return Scaffold(
+      backgroundColor: Colors.grey[50],
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        title: Text('Hello $_firestoreUsername!',
+            style: const TextStyle(
+                color: Colors.black, fontWeight: FontWeight.bold)),
+        actions: [
+          IconButton(
             icon: const Icon(Icons.filter_alt_outlined),
             onPressed: _showFilterDialog,
             tooltip: 'Filter Posts',
           ),
-        Padding(
-          padding: const EdgeInsets.only(right: 16.0),
-          child: GestureDetector(
-            onTap: () {
-              if (_firestoreUserRole == 'User') {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const UserProfilePage(),
-                  ),
-                ).then((result) {
-                  if (result == true) {
-                    _loadUsernameAndRoleFromFirestore();
-                  }
-                });
-              } else if (_firestoreUserRole == 'Restaurant Owner') {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const RestaurantProfilePage(),
-                  ),
-                ).then((result) {
-                  if (result == true) {
-                    _loadUsernameAndRoleFromFirestore();
-                  }
-                });
-              }
-            },
-            child: Chip(
-              avatar: CircleAvatar(
-                radius: 18,
-                backgroundColor: Colors.deepPurple[100],
-                backgroundImage: _userProfileUrl != null
-                    ? NetworkImage(_userProfileUrl!)
-                    : null,
-                child: _userProfileUrl == null
-                    ? Text(
-                        _firestoreUsername.isNotEmpty
-                            ? _firestoreUsername[0].toUpperCase()
-                            : 'U',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      )
-                    : null,
-              ),
-              label: Text(
-                _firestoreUserRole,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
+          Padding(
+            padding: const EdgeInsets.only(right: 16.0),
+            child: GestureDetector(
+              onTap: () {
+                if (_firestoreUserRole == 'User') {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const UserProfilePage(),
+                    ),
+                  ).then((result) {
+                    if (result == true) {
+                      _loadUsernameAndRoleFromFirestore();
+                    }
+                  });
+                } else if (_firestoreUserRole == 'Restaurant Owner') {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const RestaurantProfilePage(),
+                    ),
+                  ).then((result) {
+                    if (result == true) {
+                      _loadUsernameAndRoleFromFirestore();
+                    }
+                  });
+                }
+              },
+              child: Chip(
+                avatar: CircleAvatar(
+                  radius: 18,
+                  backgroundColor: Colors.deepPurple[100],
+                  backgroundImage: _userProfileUrl != null
+                      ? NetworkImage(_userProfileUrl!)
+                      : null,
+                  child: _userProfileUrl == null
+                      ? Text(
+                          _firestoreUsername.isNotEmpty
+                              ? _firestoreUsername[0].toUpperCase()
+                              : 'U',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        )
+                      : null,
                 ),
+                label: Text(
+                  _firestoreUserRole,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                backgroundColor: Colors.deepPurple[800],
               ),
-              backgroundColor: Colors.deepPurple[800],
             ),
           ),
-        ),
-      ],
-    ),
-body: _selectedIndex == 2
-          ? const CreatePostPage()
-          : _pages[_selectedIndex],
+        ],
+      ),
+      body: _selectedIndex == 2 ? null : _pages[_selectedIndex],
       bottomNavigationBar: BottomNavigationBar(
         type: BottomNavigationBarType.fixed,
         selectedItemColor: Colors.deepPurple[800],
@@ -624,8 +635,10 @@ body: _selectedIndex == 2
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
           BottomNavigationBarItem(icon: Icon(Icons.search), label: 'Search'),
-          BottomNavigationBarItem(icon: Icon(Icons.add_circle, size: 40), label: ''),
-          BottomNavigationBarItem(icon: Icon(Icons.chat_bubble_outline), label: 'Chat'),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.add_circle, size: 40), label: ''),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.chat_bubble_outline), label: 'Chat'),
           BottomNavigationBarItem(icon: Icon(Icons.map), label: 'Map'),
         ],
       ),
@@ -814,7 +827,8 @@ body: _selectedIndex == 2
                                   Navigator.push(
                                     context,
                                     MaterialPageRoute(
-                                      builder: (context) => const CreatePostPage(),
+                                      builder: (context) =>
+                                          const CreatePostPage(),
                                     ),
                                   );
                                 },
@@ -930,6 +944,57 @@ body: _selectedIndex == 2
       const SnackBar(
         content: Text('Comment feature coming soon!'),
       ),
+    );
+  }
+
+  // Show create options dialog
+  void _showCreateOptionsDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text(
+            'Create New',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: Icon(Icons.post_add, color: Colors.deepPurple[800]),
+                title: const Text('Create Post'),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const CreatePostPage(),
+                    ),
+                  );
+                },
+              ),
+              const Divider(),
+              ListTile(
+                leading:
+                    Icon(Icons.restaurant_menu, color: Colors.deepPurple[800]),
+                title: const Text('Create Menu Item'),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const CreateMenuItemPage(),
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }
