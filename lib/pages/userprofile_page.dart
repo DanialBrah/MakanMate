@@ -22,6 +22,7 @@ class _UserProfilePageState extends State<UserProfilePage>
   final PostService _postService = PostService();
   final AuthService _authService = AuthService();
   late TabController _tabController;
+  bool _isDisposed = false; // Add this flag
 
   Map<String, dynamic>? _userData;
   bool _isLoading = true;
@@ -35,6 +36,10 @@ class _UserProfilePageState extends State<UserProfilePage>
 
   @override
   void dispose() {
+    _isDisposed = true; // Set flag first
+    if (_tabController.hasListeners) {
+      _tabController.removeListener(() {});
+    }
     _tabController.dispose();
     super.dispose();
   }
@@ -68,23 +73,23 @@ class _UserProfilePageState extends State<UserProfilePage>
   }
 
   Future<void> _signOut() async {
+    if (_isDisposed) return; // Add early return if disposed
+
     try {
-      // Cancel any active listeners before signing out
-      _tabController.dispose();
-
-      await _authService.signOut();
-
+      // First navigate, then sign out
       if (mounted) {
-        // Navigate immediately to login page
-        Navigator.of(context).pushAndRemoveUntil(
+        await Navigator.of(context).pushAndRemoveUntil(
           MaterialPageRoute(
             builder: (context) => const BeautifulLoginPage(),
           ),
           (route) => false,
         );
       }
+
+      // Sign out after navigation
+      await _authService.signOut();
     } catch (e) {
-      if (mounted) {
+      if (!_isDisposed && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Failed to sign out: $e'),
