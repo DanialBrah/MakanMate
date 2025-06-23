@@ -10,6 +10,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../widgets/edit_post_dialog.dart';
 import '../pages/RestaurantSearchPage.dart';
 import '../pages/create_menu_item_page.dart';
+import '../pages/chatbot_page.dart';
 
 class HomePage extends StatefulWidget {
   final String userRole;
@@ -546,7 +547,7 @@ class _HomePageState extends State<HomePage> {
       _buildHomeContent(),
       const RestaurantSearchPage(),
       const SizedBox(),
-      // const ChatPageContent(),
+      const ChatPageContent(),
       // const MapPageContent(),
     ];
 
