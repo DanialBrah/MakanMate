@@ -17,10 +17,10 @@ class _ChatPageContentState extends State<ChatPageContent> {
   bool _isConnected = false;
 
   // Ollama configuration
-  String _ollamaUrl = 'http://localhost:11434'; // Default Ollama URL
+  String _ollamaUrl = 'http://10.0.2.2:11434'; // Default Ollama URL
   String _selectedModel = 'llama2'; // Default model
   final List<String> _availableModels = [
-    'llama2',
+    'llama2:latest',
     'codellama',
     'mistral',
     'neural-chat'
@@ -54,7 +54,7 @@ class _ChatPageContentState extends State<ChatPageContent> {
   Future<void> _checkOllamaConnection() async {
     try {
       final response = await http.get(
-        Uri.parse('$_ollamaUrl/api/tags'),
+        Uri.parse('$_ollamaUrl/api/tags'), // Make sure this is correct
         headers: {'Content-Type': 'application/json'},
       ).timeout(const Duration(seconds: 5));
 
@@ -79,7 +79,7 @@ class _ChatPageContentState extends State<ChatPageContent> {
   Future<void> _loadAvailableModels() async {
     try {
       final response = await http.get(
-        Uri.parse('$_ollamaUrl/api/tags'),
+        Uri.parse('$_ollamaUrl/api/tags'), // Make sure this is correct
         headers: {'Content-Type': 'application/json'},
       );
 
@@ -90,8 +90,8 @@ class _ChatPageContentState extends State<ChatPageContent> {
         if (models != null && models.isNotEmpty) {
           setState(() {
             _availableModels.clear();
-            _availableModels.addAll(
-                models.map((model) => model['name'].toString().split(':')[0]));
+            _availableModels
+                .addAll(models.map((model) => model['name'].toString()));
             if (!_availableModels.contains(_selectedModel)) {
               _selectedModel = _availableModels.first;
             }
