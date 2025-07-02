@@ -1,38 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-
-void main() {
-  runApp(const MakanMateApp());
-}
-
-class MakanMateApp extends StatelessWidget {
-  const MakanMateApp({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'MakanMate',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        primarySwatch: Colors.deepPurple,
-        fontFamily: 'Poppins',
-        inputDecorationTheme: InputDecorationTheme(
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide.none,
-          ),
-          filled: true,
-          fillColor: Colors.white.withOpacity(0.9),
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 20,
-            vertical: 18,
-          ),
-        ),
-      ),
-      home: const ResetPasswordPage(),
-    );
-  }
-}
+import 'package:firebase_auth/firebase_auth.dart';
 
 class ResetPasswordPage extends StatefulWidget {
   const ResetPasswordPage({super.key});
@@ -44,37 +12,60 @@ class ResetPasswordPage extends StatefulWidget {
 class _ResetPasswordPageState extends State<ResetPasswordPage> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
-  final _newPasswordController = TextEditingController();
-  final _confirmPasswordController = TextEditingController();
   bool _isLoading = false;
-  bool _showNewPassword = false;
-  bool _showConfirmPassword = false;
 
   @override
   void dispose() {
     _emailController.dispose();
-    _newPasswordController.dispose();
-    _confirmPasswordController.dispose();
     super.dispose();
   }
 
   Future<void> _resetPassword() async {
-    setState(() => _isLoading = true);
-    await Future.delayed(const Duration(seconds: 2));
-    setState(() => _isLoading = false);
-    if (!mounted) return;
+    if (!_formKey.currentState!.validate()) return;
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text('Password reset successful!'),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
+    setState(() => _isLoading = true);
+    try {
+      await FirebaseAuth.instance.sendPasswordResetEmail(
+        email: _emailController.text.trim(),
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Password reset email sent! Check your inbox.'),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          backgroundColor: Colors.green,
         ),
-        backgroundColor: Colors.green,
-      ),
-    );
-    Navigator.pop(context);
+      );
+      Navigator.pop(context);
+    } on FirebaseAuthException catch (e) {
+      String message;
+      switch (e.code) {
+        case 'invalid-email':
+          message = 'The email address is not valid.';
+          break;
+        case 'user-not-found':
+          message = 'No user found for that email.';
+          break;
+        default:
+          message = 'An error occurred. Please try again.';
+      }
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
   @override
@@ -111,7 +102,6 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
                 ),
                 child: Stack(
                   children: [
-                    // You can replace this with an actual image
                     Container(
                       decoration: BoxDecoration(
                         image: DecorationImage(
@@ -124,7 +114,6 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
                         ),
                       ),
                     ),
-                    // Gradient overlay for fading effect
                     Container(
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
@@ -195,7 +184,7 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
                               ),
                               const SizedBox(height: 8),
                               Text(
-                                'Create a new secure password',
+                                'Enter your email to receive a reset link',
                                 style: TextStyle(
                                   fontSize: 16,
                                   color: Colors.white.withOpacity(0.9),
@@ -242,69 +231,6 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
                                   return null;
                                 },
                               ),
-                              const SizedBox(height: 24),
-
-                              // New Password Field
-                              _buildTextField(
-                                controller: _newPasswordController,
-                                label: 'New Password',
-                                icon: Icons.lock_outline,
-                                obscureText: !_showNewPassword,
-                                suffixIcon: IconButton(
-                                  icon: Icon(
-                                    _showNewPassword
-                                        ? Icons.visibility_outlined
-                                        : Icons.visibility_off_outlined,
-                                  ),
-                                  onPressed: () {
-                                    setState(() {
-                                      _showNewPassword = !_showNewPassword;
-                                    });
-                                  },
-                                  color: Colors.grey[600],
-                                ),
-                                validator: (value) {
-                                  if (value == null || value.isEmpty) {
-                                    return 'Please enter a new password';
-                                  }
-                                  if (value.length < 6) {
-                                    return 'Password must be at least 6 characters';
-                                  }
-                                  return null;
-                                },
-                              ),
-                              const SizedBox(height: 24),
-
-                              // Confirm Password Field
-                              _buildTextField(
-                                controller: _confirmPasswordController,
-                                label: 'Confirm Password',
-                                icon: Icons.lock_outline,
-                                obscureText: !_showConfirmPassword,
-                                suffixIcon: IconButton(
-                                  icon: Icon(
-                                    _showConfirmPassword
-                                        ? Icons.visibility_outlined
-                                        : Icons.visibility_off_outlined,
-                                  ),
-                                  onPressed: () {
-                                    setState(() {
-                                      _showConfirmPassword =
-                                          !_showConfirmPassword;
-                                    });
-                                  },
-                                  color: Colors.grey[600],
-                                ),
-                                validator: (value) {
-                                  if (value == null || value.isEmpty) {
-                                    return 'Please confirm your password';
-                                  }
-                                  if (value != _newPasswordController.text) {
-                                    return 'Passwords do not match';
-                                  }
-                                  return null;
-                                },
-                              ),
                               const SizedBox(height: 32),
 
                               // Reset Password Button
@@ -340,57 +266,12 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
                                           ),
                                         )
                                       : const Text(
-                                          'Reset Password',
+                                          'Send Reset Link',
                                           style: TextStyle(
                                             fontSize: 18,
                                             fontWeight: FontWeight.w600,
                                           ),
                                         ),
-                                ),
-                              ),
-                              const SizedBox(height: 24),
-
-                              // Security Tips
-                              Container(
-                                padding: const EdgeInsets.all(16),
-                                decoration: BoxDecoration(
-                                  color: Colors.grey.withOpacity(0.05),
-                                  borderRadius: BorderRadius.circular(16),
-                                  border: Border.all(
-                                    color: Colors.grey.withOpacity(0.1),
-                                  ),
-                                ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      children: [
-                                        Icon(
-                                          Icons.security,
-                                          size: 18,
-                                          color: Colors.deepPurple[800],
-                                        ),
-                                        const SizedBox(width: 8),
-                                        Text(
-                                          'Password Tips',
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.w600,
-                                            color: Colors.deepPurple[800],
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 12),
-                                    _buildTipItem(
-                                      'Use at least 8 characters',
-                                    ),
-                                    _buildTipItem(
-                                      'Include uppercase and lowercase letters',
-                                    ),
-                                    _buildTipItem(
-                                      'Add numbers and special characters',
-                                    ),
-                                  ],
                                 ),
                               ),
                             ],
@@ -453,32 +334,6 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
         fillColor: Colors.grey.withOpacity(0.05),
       ),
       validator: validator,
-    );
-  }
-
-  Widget _buildTipItem(String text) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8.0),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(
-            Icons.check_circle_outline,
-            size: 16,
-            color: Colors.grey[600],
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              text,
-              style: TextStyle(
-                fontSize: 13,
-                color: Colors.grey[700],
-              ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }
