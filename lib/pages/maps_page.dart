@@ -3,7 +3,7 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import '../models/restaurant.dart';
+import '../models/location_model.dart';
 
 class MapsPage extends StatefulWidget {
   const MapsPage({super.key});
@@ -16,8 +16,8 @@ class _MapsPageState extends State<MapsPage> {
   GoogleMapController? _mapController;
   Position? _currentPosition;
   Set<Marker> _markers = {};
-  List<Restaurant> _restaurants = [];
-  Restaurant? _selectedRestaurant;
+  List<Location> _locations = [];
+  Location? _selectedLocation;
   bool _isLoading = true;
   String _mapStyle = '';
   String _userRole = '';
@@ -37,7 +37,7 @@ class _MapsPageState extends State<MapsPage> {
     _loadMapStyle();
     _getCurrentUser();
     _getCurrentLocation();
-    _loadRestaurants();
+    _loadLocations();
   }
 
   Future<void> _getCurrentUser() async {
@@ -132,20 +132,20 @@ class _MapsPageState extends State<MapsPage> {
     }
   }
 
-  Future<void> _loadRestaurants() async {
+  Future<void> _loadLocations() async {
     try {
-      List<Restaurant> restaurants;
+      List<Location> locations;
 
       if (_userRole == 'Restaurant Owner') {
-        // Load owner's restaurants from Firestore
-        restaurants = await _getOwnerRestaurants();
+        // Load owner's locations from Firestore
+        locations = await _getOwnerLocations();
       } else {
-        // Load all restaurants for normal users
-        restaurants = await _getAllRestaurants();
+        // Load all locations for normal users
+        locations = await _getAllLocations();
       }
 
       setState(() {
-        _restaurants = restaurants;
+        _locations = locations;
         _isLoading = false;
       });
       _createMarkers();
@@ -153,116 +153,91 @@ class _MapsPageState extends State<MapsPage> {
       setState(() {
         _isLoading = false;
       });
-      print('Error loading restaurants: $e');
+      print('Error loading locations: $e');
     }
   }
 
-  Future<List<Restaurant>> _getOwnerRestaurants() async {
+  Future<List<Location>> _getOwnerLocations() async {
     try {
       final querySnapshot = await FirebaseFirestore.instance
-          .collection('restaurants')
+          .collection('locations')
           .where('ownerId', isEqualTo: _userId)
           .get();
 
       return querySnapshot.docs.map((doc) {
         final data = doc.data();
         data['id'] = doc.id;
-        return Restaurant.fromMap(data);
+        return Location.fromMap(data);
       }).toList();
     } catch (e) {
-      print('Error getting owner restaurants: $e');
+      print('Error getting owner locations: $e');
       return [];
     }
   }
 
-  Future<List<Restaurant>> _getAllRestaurants() async {
+  Future<List<Location>> _getAllLocations() async {
     try {
       final querySnapshot =
-          await FirebaseFirestore.instance.collection('restaurants').get();
+          await FirebaseFirestore.instance.collection('locations').get();
 
-      List<Restaurant> restaurants = querySnapshot.docs.map((doc) {
+      List<Location> locations = querySnapshot.docs.map((doc) {
         final data = doc.data();
         data['id'] = doc.id;
-        return Restaurant.fromMap(data);
+        return Location.fromMap(data);
       }).toList();
 
-      // Add sample restaurants if collection is empty
-      if (restaurants.isEmpty) {
-        restaurants = await _getSampleRestaurants();
+      // Add sample locations if collection is empty
+      if (locations.isEmpty) {
+        locations = await _getSampleLocations();
       }
 
-      return restaurants;
+      return locations;
     } catch (e) {
-      print('Error getting all restaurants: $e');
-      return await _getSampleRestaurants();
+      print('Error getting all locations: $e');
+      return await _getSampleLocations();
     }
   }
 
-  Future<List<Restaurant>> _getSampleRestaurants() async {
+  Future<List<Location>> _getSampleLocations() async {
     return [
-      Restaurant(
+      Location(
         id: '1',
         name: 'Nasi Lemak Wanjo',
         address: 'Kampung Baru, Kuala Lumpur',
-        latitude: 3.1516,
+        latitude: 1.5589,
         longitude: 101.6942,
-        cuisine: 'Malaysian',
-        rating: 4.5,
-        priceRange: 'RM 5-15',
-        isOpen: true,
-        openingHours: '7:00 AM - 3:00 PM',
         phoneNumber: '+60 3-2691 3317',
       ),
-      Restaurant(
+      Location(
         id: '2',
         name: 'Jalan Alor Food Street',
         address: 'Jalan Alor, Bukit Bintang, Kuala Lumpur',
         latitude: 3.1472,
         longitude: 101.7107,
-        cuisine: 'Street Food',
-        rating: 4.2,
-        priceRange: 'RM 8-25',
-        isOpen: true,
-        openingHours: '6:00 PM - 4:00 AM',
         phoneNumber: '+60 12-345 6789',
       ),
-      Restaurant(
+      Location(
         id: '3',
         name: 'Hutong Food Court',
         address: 'Lot 10, Bukit Bintang, Kuala Lumpur',
         latitude: 3.1478,
         longitude: 101.7118,
-        cuisine: 'Food Court',
-        rating: 4.0,
-        priceRange: 'RM 6-20',
-        isOpen: true,
-        openingHours: '10:00 AM - 10:00 PM',
         phoneNumber: '+60 3-2143 8080',
       ),
-      Restaurant(
+      Location(
         id: '4',
         name: 'Restoran Yut Kee',
         address: 'Jalan Kamunting, Kuala Lumpur',
         latitude: 3.1569,
         longitude: 101.6851,
-        cuisine: 'Hainanese',
-        rating: 4.3,
-        priceRange: 'RM 8-18',
-        isOpen: true,
-        openingHours: '8:00 AM - 4:30 PM',
         phoneNumber: '+60 3-2698 8108',
       ),
-      Restaurant(
+      Location(
         id: '5',
-        name: 'Village Park Restaurant',
+        name: 'Village Park Location',
         address: 'Damansara Uptown, Petaling Jaya',
         latitude: 3.1319,
         longitude: 101.6261,
-        cuisine: 'Malaysian Chinese',
-        rating: 4.1,
-        priceRange: 'RM 12-30',
-        isOpen: false,
-        openingHours: '11:00 AM - 3:00 AM',
         phoneNumber: '+60 3-7726 3022',
       ),
     ];
@@ -287,33 +262,40 @@ class _MapsPageState extends State<MapsPage> {
       );
     }
 
-    // Add restaurant markers
-    for (Restaurant restaurant in _restaurants) {
+    // Add location markers
+    for (Location location in _locations) {
       markers.add(
         Marker(
-          markerId: MarkerId(restaurant.id),
-          position: LatLng(restaurant.latitude, restaurant.longitude),
-          icon: BitmapDescriptor.defaultMarkerWithHue(
-            restaurant.isOpen
-                ? BitmapDescriptor.hueRed
-                : BitmapDescriptor.hueOrange,
-          ),
+          markerId: MarkerId(location.id),
+          position: LatLng(location.latitude, location.longitude),
           infoWindow: InfoWindow(
-            title: restaurant.name,
-            snippet: '${restaurant.cuisine} • ${restaurant.priceRange}',
+            title: location.name,
           ),
           onTap: () {
             if (_userRole == 'Restaurant Owner') {
-              _showOwnerRestaurantOptions(restaurant);
+              _showOwnerLocationOptions(location);
             } else {
-              _showRestaurantDetails(restaurant);
+              _showLocationDetails(location);
             }
           },
         ),
       );
     }
 
-    // Add temporary location marker for restaurant owners setting location
+    // Add location markers
+    for (Location location in _locations) {
+      markers.add(
+        Marker(
+          markerId: MarkerId(location.id),
+          position: LatLng(location.latitude, location.longitude),
+          infoWindow: InfoWindow(
+            title: location.name,
+          ),
+        ),
+      );
+    }
+
+    // Add temporary location marker for location owners setting location
     if (_tempLocationForSetting != null && _isSettingLocation) {
       markers.add(
         Marker(
@@ -334,9 +316,9 @@ class _MapsPageState extends State<MapsPage> {
     });
   }
 
-  void _showRestaurantDetails(Restaurant restaurant) {
+  void _showLocationDetails(Location location) {
     setState(() {
-      _selectedRestaurant = restaurant;
+      _selectedLocation = location;
     });
 
     showModalBottomSheet(
@@ -371,7 +353,7 @@ class _MapsPageState extends State<MapsPage> {
                   child: SingleChildScrollView(
                     controller: scrollController,
                     padding: const EdgeInsets.all(16),
-                    child: _buildRestaurantCard(restaurant),
+                    child: _buildLocationCard(location),
                   ),
                 ),
               ],
@@ -382,7 +364,7 @@ class _MapsPageState extends State<MapsPage> {
     );
   }
 
-  void _showOwnerRestaurantOptions(Restaurant restaurant) {
+  void _showOwnerLocationOptions(Location location) {
     showModalBottomSheet(
       context: context,
       builder: (context) => Container(
@@ -391,7 +373,7 @@ class _MapsPageState extends State<MapsPage> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              restaurant.name,
+              location.name,
               style: const TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
@@ -403,7 +385,7 @@ class _MapsPageState extends State<MapsPage> {
               title: const Text('Update Location'),
               onTap: () {
                 Navigator.pop(context);
-                _startLocationSetting(restaurant);
+                _startLocationSetting(location);
               },
             ),
             ListTile(
@@ -411,19 +393,7 @@ class _MapsPageState extends State<MapsPage> {
               title: const Text('Edit Details'),
               onTap: () {
                 Navigator.pop(context);
-                _showEditRestaurantDialog(restaurant);
-              },
-            ),
-            ListTile(
-              leading: Icon(
-                restaurant.isOpen ? Icons.store : Icons.store_mall_directory,
-                color: restaurant.isOpen ? Colors.green : Colors.red,
-              ),
-              title:
-                  Text(restaurant.isOpen ? 'Mark as Closed' : 'Mark as Open'),
-              onTap: () {
-                Navigator.pop(context);
-                _toggleRestaurantStatus(restaurant);
+                _showEditLocationDialog(location);
               },
             ),
           ],
@@ -432,11 +402,11 @@ class _MapsPageState extends State<MapsPage> {
     );
   }
 
-  void _startLocationSetting(Restaurant? restaurant) {
+  void _startLocationSetting(Location? location) {
     setState(() {
       _isSettingLocation = true;
-      _tempLocationForSetting = restaurant != null
-          ? LatLng(restaurant.latitude, restaurant.longitude)
+      _tempLocationForSetting = location != null
+          ? LatLng(location.latitude, location.longitude)
           : _currentPosition != null
               ? LatLng(_currentPosition!.latitude, _currentPosition!.longitude)
               : const LatLng(3.139, 101.6869);
@@ -445,19 +415,19 @@ class _MapsPageState extends State<MapsPage> {
 
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text('Tap on the map to set restaurant location'),
+        content: Text('Tap on the map to set location location'),
         duration: Duration(seconds: 3),
       ),
     );
   }
 
-  void _confirmLocationSetting(Restaurant? restaurant) {
+  void _confirmLocationSetting(Location? location) {
     if (_tempLocationForSetting == null) return;
 
-    if (restaurant != null) {
-      _updateRestaurantLocation(restaurant, _tempLocationForSetting!);
+    if (location != null) {
+      _updateLocationLocation(location, _tempLocationForSetting!);
     } else {
-      _showNewRestaurantDialog(_tempLocationForSetting!);
+      _showNewLocationDialog(_tempLocationForSetting!);
     }
 
     setState(() {
@@ -475,23 +445,22 @@ class _MapsPageState extends State<MapsPage> {
     _createMarkers();
   }
 
-  Future<void> _updateRestaurantLocation(
-      Restaurant restaurant, LatLng newLocation) async {
+  Future<void> _updateLocationLocation(
+      Location location, LatLng newLocation) async {
     try {
       await FirebaseFirestore.instance
-          .collection('restaurants')
-          .doc(restaurant.id)
+          .collection('locations')
+          .doc(location.id)
           .update({
         'latitude': newLocation.latitude,
         'longitude': newLocation.longitude,
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('Restaurant location updated successfully')),
+        const SnackBar(content: Text('Location location updated successfully')),
       );
 
-      _loadRestaurants(); // Reload to show updated location
+      _loadLocations(); // Reload to show updated location
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error updating location: $e')),
@@ -499,124 +468,26 @@ class _MapsPageState extends State<MapsPage> {
     }
   }
 
-  void _showNewRestaurantDialog(LatLng location) {
+  void _showNewLocationDialog(LatLng location) {
     final nameController = TextEditingController();
     final addressController = TextEditingController();
-    final descriptionController = TextEditingController();
+    final phoneController = TextEditingController();
 
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Add New Restaurant'),
+        title: const Text('Add New Location'),
         content: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               TextField(
                 controller: nameController,
-                decoration: const InputDecoration(labelText: 'Restaurant Name'),
+                decoration: const InputDecoration(labelText: 'Location Name'),
               ),
               TextField(
                 controller: addressController,
                 decoration: const InputDecoration(labelText: 'Address'),
-              ),
-              TextField(
-                controller: descriptionController,
-                decoration: const InputDecoration(labelText: 'Description'),
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              if (nameController.text.isNotEmpty) {
-                _saveNewRestaurant(
-                  nameController.text,
-                  addressController.text,
-                  location,
-                  descriptionController.text,
-                );
-                Navigator.pop(context);
-              }
-            },
-            child: const Text('Save'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _saveNewRestaurant(
-    String name,
-    String address,
-    LatLng location,
-    String description,
-  ) async {
-    try {
-      await FirebaseFirestore.instance.collection('locations').add({
-        'name': name,
-        'address': address,
-        'latitude': location.latitude,
-        'longitude': location.longitude,
-        'description': description,
-        'ownerId': _userId,
-        'createdAt': FieldValue.serverTimestamp(),
-      });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Restaurant added successfully')),
-      );
-
-      _loadRestaurants();
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error adding restaurant: $e')),
-      );
-    }
-  }
-
-  void _showEditRestaurantDialog(Restaurant restaurant) {
-    final nameController = TextEditingController(text: restaurant.name);
-    final addressController = TextEditingController(text: restaurant.address);
-    final cuisineController = TextEditingController(text: restaurant.cuisine);
-    final priceRangeController =
-        TextEditingController(text: restaurant.priceRange);
-    final openingHoursController =
-        TextEditingController(text: restaurant.openingHours);
-    final phoneController = TextEditingController(text: restaurant.phoneNumber);
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Edit Restaurant'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: nameController,
-                decoration: const InputDecoration(labelText: 'Restaurant Name'),
-              ),
-              TextField(
-                controller: addressController,
-                decoration: const InputDecoration(labelText: 'Address'),
-              ),
-              TextField(
-                controller: cuisineController,
-                decoration: const InputDecoration(labelText: 'Cuisine Type'),
-              ),
-              TextField(
-                controller: priceRangeController,
-                decoration: const InputDecoration(labelText: 'Price Range'),
-              ),
-              TextField(
-                controller: openingHoursController,
-                decoration: const InputDecoration(labelText: 'Opening Hours'),
               ),
               TextField(
                 controller: phoneController,
@@ -632,15 +503,89 @@ class _MapsPageState extends State<MapsPage> {
           ),
           ElevatedButton(
             onPressed: () {
-              _updateRestaurantDetails(
-                restaurant,
-                nameController.text,
-                addressController.text,
-                cuisineController.text,
-                priceRangeController.text,
-                openingHoursController.text,
-                phoneController.text,
-              );
+              if (nameController.text.isNotEmpty) {
+                _saveNewLocation(
+                  nameController.text,
+                  addressController.text,
+                  location,
+                  phoneController.text,
+                );
+                Navigator.pop(context);
+              }
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _saveNewLocation(
+    String name,
+    String address,
+    LatLng location,
+    String phoneNumber,
+  ) async {
+    try {
+      await FirebaseFirestore.instance.collection('locations').add({
+        'name': name,
+        'address': address,
+        'latitude': location.latitude,
+        'longitude': location.longitude,
+        'phoneNumber': phoneNumber,
+        'ownerId': _userId,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Location added successfully')),
+      );
+
+      _loadLocations();
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error adding location: $e')),
+      );
+    }
+  }
+
+  void _showEditLocationDialog(Location location) {
+    final nameController = TextEditingController(text: location.name);
+    final addressController = TextEditingController(text: location.address);
+    final phoneController = TextEditingController(text: location.phoneNumber);
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Edit Location'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: nameController,
+                decoration: const InputDecoration(labelText: 'Location Name'),
+              ),
+              TextField(
+                controller: addressController,
+                decoration: const InputDecoration(labelText: 'Address'),
+              ),
+              TextField(
+                controller: phoneController,
+                decoration: const InputDecoration(labelText: 'Phone Number'),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              _updateLocationDetails(location, nameController.text,
+                  addressController.text, phoneController.text);
               Navigator.pop(context);
             },
             child: const Text('Save'),
@@ -650,66 +595,35 @@ class _MapsPageState extends State<MapsPage> {
     );
   }
 
-  Future<void> _updateRestaurantDetails(
-    Restaurant restaurant,
+  Future<void> _updateLocationDetails(
+    Location location,
     String name,
     String address,
-    String cuisine,
-    String priceRange,
-    String openingHours,
     String phone,
   ) async {
     try {
       await FirebaseFirestore.instance
-          .collection('restaurants')
-          .doc(restaurant.id)
+          .collection('locations')
+          .doc(location.id)
           .update({
         'name': name,
         'address': address,
-        'cuisine': cuisine,
-        'priceRange': priceRange,
-        'openingHours': openingHours,
         'phoneNumber': phone,
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Restaurant updated successfully')),
+        const SnackBar(content: Text('Location updated successfully')),
       );
 
-      _loadRestaurants();
+      _loadLocations();
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error updating restaurant: $e')),
+        SnackBar(content: Text('Error updating location: $e')),
       );
     }
   }
 
-  Future<void> _toggleRestaurantStatus(Restaurant restaurant) async {
-    try {
-      await FirebaseFirestore.instance
-          .collection('restaurants')
-          .doc(restaurant.id)
-          .update({
-        'isOpen': !restaurant.isOpen,
-      });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Restaurant marked as ${!restaurant.isOpen ? 'open' : 'closed'}',
-          ),
-        ),
-      );
-
-      _loadRestaurants();
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error updating restaurant status: $e')),
-      );
-    }
-  }
-
-  Widget _buildRestaurantCard(Restaurant restaurant) {
+  Widget _buildLocationCard(Location location) {
     return Card(
       elevation: 4,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -725,21 +639,13 @@ class _MapsPageState extends State<MapsPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        restaurant.name,
+                        location.name,
                         style: const TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
                       const SizedBox(height: 4),
-                      Text(
-                        restaurant.cuisine,
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.deepPurple[600],
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
                     ],
                   ),
                 ),
@@ -747,16 +653,7 @@ class _MapsPageState extends State<MapsPage> {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: restaurant.isOpen ? Colors.green : Colors.red,
                     borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    restaurant.isOpen ? 'OPEN' : 'CLOSED',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                    ),
                   ),
                 ),
               ],
@@ -766,16 +663,8 @@ class _MapsPageState extends State<MapsPage> {
               children: [
                 Icon(Icons.star, color: Colors.amber, size: 20),
                 const SizedBox(width: 4),
-                Text(
-                  restaurant.rating.toString(),
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                ),
                 const SizedBox(width: 16),
                 Icon(Icons.attach_money, color: Colors.green, size: 20),
-                Text(
-                  restaurant.priceRange,
-                  style: const TextStyle(fontWeight: FontWeight.w500),
-                ),
               ],
             ),
             const SizedBox(height: 12),
@@ -785,7 +674,7 @@ class _MapsPageState extends State<MapsPage> {
                 const SizedBox(width: 4),
                 Expanded(
                   child: Text(
-                    restaurant.address,
+                    location.address,
                     style: TextStyle(color: Colors.grey[600]),
                   ),
                 ),
@@ -796,10 +685,6 @@ class _MapsPageState extends State<MapsPage> {
               children: [
                 Icon(Icons.access_time, color: Colors.blue, size: 20),
                 const SizedBox(width: 4),
-                Text(
-                  restaurant.openingHours,
-                  style: TextStyle(color: Colors.grey[600]),
-                ),
               ],
             ),
             const SizedBox(height: 8),
@@ -808,7 +693,7 @@ class _MapsPageState extends State<MapsPage> {
                 Icon(Icons.phone, color: Colors.green, size: 20),
                 const SizedBox(width: 4),
                 Text(
-                  restaurant.phoneNumber,
+                  location.phoneNumber,
                   style: TextStyle(color: Colors.grey[600]),
                 ),
               ],
@@ -818,7 +703,7 @@ class _MapsPageState extends State<MapsPage> {
               children: [
                 Expanded(
                   child: ElevatedButton.icon(
-                    onPressed: () => _getDirections(restaurant),
+                    onPressed: () => _getDirections(location),
                     icon: const Icon(Icons.directions),
                     label: const Text('Directions'),
                     style: ElevatedButton.styleFrom(
@@ -830,7 +715,7 @@ class _MapsPageState extends State<MapsPage> {
                 const SizedBox(width: 8),
                 Expanded(
                   child: ElevatedButton.icon(
-                    onPressed: () => _callRestaurant(restaurant),
+                    onPressed: () => _callLocation(location),
                     icon: const Icon(Icons.phone),
                     label: const Text('Call'),
                     style: ElevatedButton.styleFrom(
@@ -846,7 +731,7 @@ class _MapsPageState extends State<MapsPage> {
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
-                  onPressed: () => _viewFullDetails(restaurant),
+                  onPressed: () => _viewFullDetails(location),
                   icon: const Icon(Icons.info_outline),
                   label: const Text('View Full Details'),
                   style: ElevatedButton.styleFrom(
@@ -862,26 +747,26 @@ class _MapsPageState extends State<MapsPage> {
     );
   }
 
-  void _viewFullDetails(Restaurant restaurant) {
+  void _viewFullDetails(Location location) {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => RestaurantDetailPage(restaurant: restaurant),
+        builder: (context) => LocationDetailPage(location: location),
       ),
     );
   }
 
-  void _getDirections(Restaurant restaurant) {
+  void _getDirections(Location location) {
     // Implement directions functionality using url_launcher
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Getting directions to ${restaurant.name}...')),
+      SnackBar(content: Text('Getting directions to ${location.name}...')),
     );
   }
 
-  void _callRestaurant(Restaurant restaurant) {
+  void _callLocation(Location location) {
     // Implement call functionality using url_launcher
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Calling ${restaurant.name}...')),
+      SnackBar(content: Text('Calling ${location.name}...')),
     );
   }
 
@@ -915,7 +800,7 @@ class _MapsPageState extends State<MapsPage> {
         backgroundColor: Colors.white,
         elevation: 0,
         title: Text(
-          _userRole == 'Restaurant Owner' ? 'My Restaurants' : 'Restaurant Map',
+          _userRole == 'Restaurant Owner' ? 'My Restaurant' : 'Restaurant Map',
           style: const TextStyle(
             color: Colors.black,
             fontWeight: FontWeight.bold,
@@ -926,7 +811,7 @@ class _MapsPageState extends State<MapsPage> {
             IconButton(
               icon: const Icon(Icons.add_location, color: Colors.black),
               onPressed: () => _startLocationSetting(null),
-              tooltip: 'Add restaurant location',
+              tooltip: 'Add location location',
             ),
           IconButton(
             icon: const Icon(Icons.my_location, color: Colors.black),
@@ -936,7 +821,7 @@ class _MapsPageState extends State<MapsPage> {
           IconButton(
             icon: const Icon(Icons.refresh, color: Colors.black),
             onPressed: () {
-              _loadRestaurants();
+              _loadLocations();
               _getCurrentLocation();
             },
             tooltip: 'Refresh',
@@ -974,7 +859,7 @@ class _MapsPageState extends State<MapsPage> {
                   zoomControlsEnabled: false,
                 ),
 
-                // Location setting controls for restaurant owners
+                // Location setting controls for location owners
                 if (_isSettingLocation)
                   Positioned(
                     top: 16,
@@ -1059,7 +944,7 @@ class _MapsPageState extends State<MapsPage> {
                       ),
                       child: TextField(
                         decoration: InputDecoration(
-                          hintText: 'Search restaurants...',
+                          hintText: 'Search locations...',
                           prefixIcon: const Icon(Icons.search),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
@@ -1071,7 +956,7 @@ class _MapsPageState extends State<MapsPage> {
                               horizontal: 16, vertical: 12),
                         ),
                         onSubmitted: (value) {
-                          _searchRestaurants(value);
+                          _searchLocations(value);
                         },
                       ),
                     ),
@@ -1079,7 +964,7 @@ class _MapsPageState extends State<MapsPage> {
 
                 // Legend overlay
                 Positioned(
-                  bottom: _selectedRestaurant != null ? 140 : 20,
+                  bottom: _selectedLocation != null ? 140 : 20,
                   left: 16,
                   child: Container(
                     padding: const EdgeInsets.all(12),
@@ -1170,8 +1055,8 @@ class _MapsPageState extends State<MapsPage> {
                   ),
                 ),
 
-                // Info panel for selected restaurant
-                if (_selectedRestaurant != null && !_isSettingLocation)
+                // Info panel for selected location
+                if (_selectedLocation != null && !_isSettingLocation)
                   Positioned(
                     bottom: 16,
                     left: 16,
@@ -1198,11 +1083,6 @@ class _MapsPageState extends State<MapsPage> {
                               color: Colors.deepPurple[100],
                               borderRadius: BorderRadius.circular(8),
                             ),
-                            child: Icon(
-                              Icons.restaurant,
-                              color: Colors.deepPurple[800],
-                              size: 30,
-                            ),
                           ),
                           const SizedBox(width: 12),
                           Expanded(
@@ -1210,14 +1090,14 @@ class _MapsPageState extends State<MapsPage> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  _selectedRestaurant!.name,
+                                  _selectedLocation!.name,
                                   style: const TextStyle(
                                     fontWeight: FontWeight.bold,
                                     fontSize: 16,
                                   ),
                                 ),
                                 Text(
-                                  _selectedRestaurant!.address,
+                                  _selectedLocation!.address,
                                   style: TextStyle(
                                     color: Colors.grey[600],
                                     fontSize: 12,
@@ -1229,40 +1109,7 @@ class _MapsPageState extends State<MapsPage> {
                                   children: [
                                     Icon(Icons.star,
                                         color: Colors.amber, size: 16),
-                                    Text(
-                                      ' ${_selectedRestaurant!.rating}',
-                                      style: const TextStyle(fontSize: 14),
-                                    ),
                                     const SizedBox(width: 8),
-                                    Text(
-                                      _selectedRestaurant!.priceRange,
-                                      style: TextStyle(
-                                        color: Colors.green[700],
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 12,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 6, vertical: 2),
-                                      decoration: BoxDecoration(
-                                        color: _selectedRestaurant!.isOpen
-                                            ? Colors.green
-                                            : Colors.red,
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                      child: Text(
-                                        _selectedRestaurant!.isOpen
-                                            ? 'OPEN'
-                                            : 'CLOSED',
-                                        style: const TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 10,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    ),
                                   ],
                                 ),
                               ],
@@ -1272,7 +1119,7 @@ class _MapsPageState extends State<MapsPage> {
                             icon: const Icon(Icons.close),
                             onPressed: () {
                               setState(() {
-                                _selectedRestaurant = null;
+                                _selectedLocation = null;
                               });
                             },
                           ),
@@ -1285,29 +1132,28 @@ class _MapsPageState extends State<MapsPage> {
     );
   }
 
-  void _searchRestaurants(String query) {
+  void _searchLocations(String query) {
     if (query.isEmpty) return;
 
-    final filteredRestaurants = _restaurants.where((restaurant) {
-      return restaurant.name.toLowerCase().contains(query.toLowerCase()) ||
-          restaurant.address.toLowerCase().contains(query.toLowerCase()) ||
-          restaurant.cuisine.toLowerCase().contains(query.toLowerCase());
+    final filteredLocations = _locations.where((location) {
+      return location.name.toLowerCase().contains(query.toLowerCase()) ||
+          location.address.toLowerCase().contains(query.toLowerCase());
     }).toList();
 
-    if (filteredRestaurants.isNotEmpty) {
-      final restaurant = filteredRestaurants.first;
+    if (filteredLocations.isNotEmpty) {
+      final location = filteredLocations.first;
       if (_mapController != null) {
         _mapController!.animateCamera(
           CameraUpdate.newLatLngZoom(
-            LatLng(restaurant.latitude, restaurant.longitude),
+            LatLng(location.latitude, location.longitude),
             16,
           ),
         );
-        _showRestaurantDetails(restaurant);
+        _showLocationDetails(location);
       }
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('No restaurants found for "$query"')),
+        SnackBar(content: Text('No locations found for "$query"')),
       );
     }
   }
@@ -1319,17 +1165,17 @@ class _MapsPageState extends State<MapsPage> {
   }
 }
 
-// Separate page for detailed restaurant view (for normal users)
-class RestaurantDetailPage extends StatelessWidget {
-  final Restaurant restaurant;
+// Separate page for detailed location view (for normal users)
+class LocationDetailPage extends StatelessWidget {
+  final Location location;
 
-  const RestaurantDetailPage({super.key, required this.restaurant});
+  const LocationDetailPage({super.key, required this.location});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(restaurant.name),
+        title: Text(location.name),
         backgroundColor: Colors.deepPurple[800],
         foregroundColor: Colors.white,
       ),
@@ -1338,7 +1184,7 @@ class RestaurantDetailPage extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Restaurant Image Placeholder
+            // Location Image Placeholder
             Container(
               width: double.infinity,
               height: 200,
@@ -1346,15 +1192,10 @@ class RestaurantDetailPage extends StatelessWidget {
                 color: Colors.grey[300],
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Icon(
-                Icons.restaurant,
-                size: 80,
-                color: Colors.grey[600],
-              ),
             ),
             const SizedBox(height: 16),
 
-            // Restaurant Info
+            // Location Info
             Card(
               child: Padding(
                 padding: const EdgeInsets.all(16),
@@ -1366,7 +1207,7 @@ class RestaurantDetailPage extends StatelessWidget {
                       children: [
                         Expanded(
                           child: Text(
-                            restaurant.name,
+                            location.name,
                             style: const TextStyle(
                               fontSize: 24,
                               fontWeight: FontWeight.bold,
@@ -1377,50 +1218,19 @@ class RestaurantDetailPage extends StatelessWidget {
                           padding: const EdgeInsets.symmetric(
                               horizontal: 12, vertical: 6),
                           decoration: BoxDecoration(
-                            color:
-                                restaurant.isOpen ? Colors.green : Colors.red,
                             borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Text(
-                            restaurant.isOpen ? 'OPEN' : 'CLOSED',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                            ),
                           ),
                         ),
                       ],
                     ),
                     const SizedBox(height: 8),
-                    Text(
-                      restaurant.cuisine,
-                      style: TextStyle(
-                        fontSize: 18,
-                        color: Colors.deepPurple[600],
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
                     const SizedBox(height: 16),
                     Row(
                       children: [
                         Icon(Icons.star, color: Colors.amber, size: 24),
                         const SizedBox(width: 4),
-                        Text(
-                          restaurant.rating.toString(),
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
                         const SizedBox(width: 16),
                         Icon(Icons.attach_money, color: Colors.green, size: 24),
-                        Text(
-                          restaurant.priceRange,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
                       ],
                     ),
                   ],
@@ -1451,7 +1261,7 @@ class RestaurantDetailPage extends StatelessWidget {
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
-                            restaurant.address,
+                            location.address,
                             style: const TextStyle(fontSize: 16),
                           ),
                         ),
@@ -1463,7 +1273,7 @@ class RestaurantDetailPage extends StatelessWidget {
                         Icon(Icons.phone, color: Colors.green, size: 20),
                         const SizedBox(width: 8),
                         Text(
-                          restaurant.phoneNumber,
+                          location.phoneNumber,
                           style: const TextStyle(fontSize: 16),
                         ),
                       ],
@@ -1473,10 +1283,6 @@ class RestaurantDetailPage extends StatelessWidget {
                       children: [
                         Icon(Icons.access_time, color: Colors.blue, size: 20),
                         const SizedBox(width: 8),
-                        Text(
-                          restaurant.openingHours,
-                          style: const TextStyle(fontSize: 16),
-                        ),
                       ],
                     ),
                   ],
