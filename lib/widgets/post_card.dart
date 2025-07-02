@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../models/post_model.dart';
 import '../pages/post_details_page.dart';
+import 'dart:convert';
+import 'dart:typed_data';
 
 class PostCard extends StatelessWidget {
   final Post post;
@@ -48,16 +50,29 @@ class PostCard extends StatelessWidget {
               child: Row(
                 children: [
                   CircleAvatar(
-                    backgroundColor: Colors.deepPurple[800],
-                    child: Text(
-                      post.userName.isNotEmpty
-                          ? post.userName[0].toUpperCase()
-                          : 'U',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
+                    radius: 24,
+                    backgroundColor: Colors.deepPurple[100],
+                    backgroundImage:
+                        post.imageBase64 != null && post.imageBase64!.isNotEmpty
+                            ? MemoryImage(base64Decode(post.imageBase64!))
+                            : (post.imageBase64 != null &&
+                                    post.imageBase64!.isNotEmpty
+                                ? NetworkImage(post.imageBase64!)
+                                : null),
+                    child: (post.imageBase64 != null &&
+                                post.imageBase64!.isNotEmpty) ||
+                            (post.imageBase64 != null &&
+                                post.imageBase64!.isNotEmpty)
+                        ? null
+                        : Text(
+                            post.userName.isNotEmpty
+                                ? post.userName[0].toUpperCase()
+                                : 'U',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -232,15 +247,18 @@ class PostCard extends StatelessWidget {
             const SizedBox(height: 12),
 
             // Image (if available)
-            if (post.imageUrl != null && post.imageUrl!.isNotEmpty)
+            if (post.imageBase64 != null && post.imageBase64!.isNotEmpty)
               Container(
                 width: double.infinity,
                 height: 200,
                 margin: const EdgeInsets.symmetric(horizontal: 16.0),
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(12),
-                  image: DecorationImage(
-                    image: NetworkImage(post.imageUrl!),
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Image.memory(
+                    base64Decode(post.imageBase64!),
                     fit: BoxFit.cover,
                   ),
                 ),

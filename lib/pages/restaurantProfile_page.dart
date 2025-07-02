@@ -9,6 +9,7 @@ import '../pages/createpost_page.dart';
 import '../widgets/edit_post_dialog.dart';
 import 'edit_profile_page.dart';
 import 'create_menu_item_page.dart';
+import 'dart:convert';
 
 class RestaurantProfilePage extends StatefulWidget {
   const RestaurantProfilePage({super.key});
@@ -229,15 +230,23 @@ class _RestaurantProfilePageState extends State<RestaurantProfilePage>
                 CircleAvatar(
                   radius: 50,
                   backgroundColor: Colors.deepPurple[800],
-                  child: Text(
-                    userName.isNotEmpty ? userName[0].toUpperCase() : 'U',
-                    style: const TextStyle(
-                      fontSize: 36,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
+                  backgroundImage: _userData?['photoBase64'] != null &&
+                          (_userData!['photoBase64'] as String).isNotEmpty
+                      ? MemoryImage(base64Decode(_userData!['photoBase64']))
+                      : null,
+                  child: _userData?['photoBase64'] == null ||
+                          (_userData!['photoBase64'] as String).isEmpty
+                      ? Text(
+                          userName.isNotEmpty ? userName[0].toUpperCase() : 'U',
+                          style: const TextStyle(
+                            fontSize: 36,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        )
+                      : null,
                 ),
+
                 const SizedBox(height: 16),
 
                 // User Name

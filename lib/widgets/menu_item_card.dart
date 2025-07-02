@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'dart:convert';
+
 
 class MenuItemCard extends StatelessWidget {
   final Map<String, dynamic> menuItem;
@@ -25,11 +27,12 @@ class MenuItemCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (menuItem['imageUrl'] != null && menuItem['imageUrl'].isNotEmpty)
+            if (menuItem['photoBase64'] != null &&
+                menuItem['photoBase64'].toString().isNotEmpty)
               ClipRRect(
                 borderRadius: BorderRadius.circular(12),
-                child: Image.network(
-                  menuItem['imageUrl'],
+                child: Image.memory(
+                  base64Decode(menuItem['photoBase64']),
                   height: 150,
                   width: double.infinity,
                   fit: BoxFit.cover,
@@ -38,6 +41,18 @@ class MenuItemCard extends StatelessWidget {
                     color: Colors.grey[200],
                     child: const Icon(Icons.restaurant_menu, size: 50),
                   ),
+                ),
+              )
+            else
+              Container(
+                height: 150,
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: Colors.grey[200],
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Center(
+                  child: Icon(Icons.image, color: Colors.grey),
                 ),
               ),
             const SizedBox(height: 12),

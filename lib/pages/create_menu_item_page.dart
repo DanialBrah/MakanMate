@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'dart:io';
+import 'dart:convert'; // for base64Encode
 
 class CreateMenuItemPage extends StatefulWidget {
   final Map<String, dynamic>? existingItem;
@@ -58,15 +59,13 @@ class _CreateMenuItemPageState extends State<CreateMenuItemPage> {
   Future<String?> _uploadImage() async {
     if (_imageFile == null) return null;
 
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return null;
-
-    final storageRef = FirebaseStorage.instance.ref().child(
-        'restaurants/${user.uid}/menu/${DateTime.now().millisecondsSinceEpoch}.jpg');
-
-    final uploadTask = storageRef.putFile(_imageFile!);
-    final snapshot = await uploadTask.whenComplete(() {});
-    return await snapshot.ref.getDownloadURL();
+    try {
+      final bytes = await _imageFile!.readAsBytes();
+      return base64Encode(bytes); // ✅ convert to base64 string
+    } catch (e) {
+      print("Error converting image to base64: $e");
+      return null;
+    }
   }
 
   Future<void> _saveMenuItem() async {
@@ -80,7 +79,7 @@ class _CreateMenuItemPageState extends State<CreateMenuItemPage> {
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) return;
 
-      final imageUrl = await _uploadImage();
+      final imageBase64 = await _uploadImage();
 
       final menuItemData = {
         'name': _nameController.text,
@@ -91,11 +90,11 @@ class _CreateMenuItemPageState extends State<CreateMenuItemPage> {
         'updatedAt': FieldValue.serverTimestamp(),
       };
 
-      if (imageUrl != null) {
-        menuItemData['imageUrl'] = imageUrl;
+      if (imageBase64 != null) {
+        menuItemData['photoBase64'] = imageBase64;
       } else if (widget.existingItem != null &&
-          widget.existingItem!['imageUrl'] != null) {
-        menuItemData['imageUrl'] = widget.existingItem!['imageUrl'];
+          widget.existingItem!['photoBase64'] != null) {
+        menuItemData['photoBase64'] = widget.existingItem!['photoBase64'];
       }
 
       if (widget.existingItem != null && widget.itemId != null) {
@@ -214,8 +213,9 @@ class _CreateMenuItemPageState extends State<CreateMenuItemPage> {
                               ? Image.file(_imageFile!, fit: BoxFit.cover)
                               : widget.existingItem != null &&
                                       widget.existingItem!['imageUrl'] != null
-                                  ? Image.network(
-                                      widget.existingItem!['imageUrl'],
+                                  ? Image.memory(
+                                      base64Decode(
+                                          widget.existingItem!['photoBase64']),
                                       fit: BoxFit.cover,
                                     )
                                   : Column(
