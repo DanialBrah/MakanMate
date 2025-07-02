@@ -7,7 +7,8 @@ class Post {
   final String description;
   final double rating;
   final String? imageUrl; // Optional image
-  final String? imageBase64; // NEW: Base64 image data
+  final String? postPhotoBase64; // NEW: Base64 image data
+  final String? userPhotoBase64;
   final String location;
   final List<String> tags;
   final List<String> likes;
@@ -25,7 +26,8 @@ class Post {
     required this.description,
     required this.rating,
     this.imageUrl,
-    this.imageBase64, // NEW field
+    this.postPhotoBase64, // NEW field
+    this.userPhotoBase64,
     required this.location,
     required this.tags,
     required this.likes,
@@ -45,7 +47,8 @@ class Post {
       'description': description,
       'rating': rating,
       'imageUrl': imageUrl,
-      'imageBase64': imageBase64, // Include base64 field
+      'postPhotoBase64': postPhotoBase64, // Include base64 field
+      'userPhotoBase64': userPhotoBase64,
       'location': location,
       'tags': tags,
       'likes': likes,
@@ -67,7 +70,8 @@ class Post {
       description: map['description'] ?? '',
       rating: (map['rating'] ?? 0.0).toDouble(),
       imageUrl: map['imageUrl'],
-      imageBase64: map['imageBase64'], // Read base64 field
+      postPhotoBase64: map['postPhotoBase64'], // Read base64 field
+      userPhotoBase64: map['userPhotoBase64'],
       location: map['location'] ?? '',
       tags: List<String>.from(map['tags'] ?? []),
       likes: List<String>.from(map['likes'] ?? []),
@@ -90,7 +94,8 @@ class Post {
     String? description,
     double? rating,
     String? imageUrl,
-    String? imageBase64, // NEW parameter
+    String? postPhotoBase64, // NEW parameter
+    String? userPhotoBase64,
     String? location,
     List<String>? tags,
     List<String>? likes,
@@ -108,7 +113,9 @@ class Post {
       description: description ?? this.description,
       rating: rating ?? this.rating,
       imageUrl: imageUrl ?? this.imageUrl,
-      imageBase64: imageBase64 ?? this.imageBase64, // Include base64
+      postPhotoBase64:
+          postPhotoBase64 ?? this.postPhotoBase64, // Include base64
+      userPhotoBase64: userPhotoBase64 ?? this.userPhotoBase64,
       location: location ?? this.location,
       tags: tags ?? this.tags,
       likes: likes ?? this.likes,

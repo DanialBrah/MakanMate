@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
+import 'dart:convert';
 import '../models/post_model.dart';
 import '../services/post_service.dart';
 
@@ -114,8 +115,12 @@ class _EditPostDialogState extends State<EditPostDialog> {
         'tags': tags,
       };
 
-      await _postService.updatePost(widget.post.id, updates,
-          imageFile: _newImageFile);
+      if (_newImageFile != null) {
+        final bytes = await _newImageFile!.readAsBytes();
+        final base64Image = base64Encode(bytes);
+        updates['postPhotoBase64'] = base64Image;
+      }
+      await _postService.updatePost(widget.post.id, updates);
 
       if (mounted) {
         // Show success message
@@ -201,16 +206,16 @@ class _EditPostDialogState extends State<EditPostDialog> {
                                     image: FileImage(_newImageFile!),
                                     fit: BoxFit.cover,
                                   )
-                                : widget.post.imageUrl != null
+                                : widget.post.postPhotoBase64 != null
                                     ? DecorationImage(
-                                        image:
-                                            NetworkImage(widget.post.imageUrl!),
+                                        image: MemoryImage(base64Decode(
+                                            widget.post.postPhotoBase64!)),
                                         fit: BoxFit.cover,
                                       )
                                     : null,
                           ),
                           child: _newImageFile == null &&
-                                  widget.post.imageUrl == null
+                                  widget.post.postPhotoBase64 == null
                               ? Center(
                                   child: Column(
                                     mainAxisSize: MainAxisSize.min,
@@ -225,6 +230,7 @@ class _EditPostDialogState extends State<EditPostDialog> {
                               : null,
                         ),
                       ),
+
                       const SizedBox(height: 16),
 
                       // Title Field

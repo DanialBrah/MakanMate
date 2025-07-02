@@ -466,6 +466,15 @@ class _RestaurantProfilePageState extends State<RestaurantProfilePage>
   }
 
   Widget _buildMenuItemCard(Map<String, dynamic> item, String itemId) {
+    ImageProvider? imageProvider;
+    if (item['photoBase64'] != null && item['photoBase64'].isNotEmpty) {
+      try {
+        imageProvider = MemoryImage(base64Decode(item['photoBase64']));
+      } catch (_) {
+        imageProvider = null;
+      }
+    }
+
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
       child: Padding(
@@ -475,15 +484,25 @@ class _RestaurantProfilePageState extends State<RestaurantProfilePage>
           children: [
             Row(
               children: [
-                if (item['imageUrl'] != null)
+                if (imageProvider != null)
                   ClipRRect(
                     borderRadius: BorderRadius.circular(8),
-                    child: Image.network(
-                      item['imageUrl'],
+                    child: Image(
+                      image: imageProvider,
                       width: 80,
                       height: 80,
                       fit: BoxFit.cover,
                     ),
+                  ),
+                if (imageProvider == null)
+                  Container(
+                    width: 80,
+                    height: 80,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(8),
+                      color: Colors.grey[300],
+                    ),
+                    child: const Icon(Icons.image_not_supported, size: 32),
                   ),
                 const SizedBox(width: 16),
                 Expanded(
@@ -819,17 +838,14 @@ class _RestaurantProfilePageState extends State<RestaurantProfilePage>
 
         var reviews = snapshot.data?.docs ?? [];
 
-        // Sort reviews by date (newest first)
         reviews.sort((a, b) {
           final aData = a.data() as Map<String, dynamic>;
           final bData = b.data() as Map<String, dynamic>;
           final aTime = aData['createdAt'] as Timestamp?;
           final bTime = bData['createdAt'] as Timestamp?;
-
           if (aTime == null && bTime == null) return 0;
           if (aTime == null) return 1;
           if (bTime == null) return -1;
-
           return bTime.compareTo(aTime);
         });
 
@@ -854,14 +870,19 @@ class _RestaurantProfilePageState extends State<RestaurantProfilePage>
           itemCount: reviews.length,
           itemBuilder: (context, index) {
             final review = reviews[index].data() as Map<String, dynamic>;
-            return _buildReviewCard(review);
+
+            // ✅ Extract user photo base64 here
+            final userPhotoBase64 = review['userPhotoBase64'] as String?;
+
+            return _buildReviewCard(review, userPhotoBase64);
           },
         );
       },
     );
   }
 
-  Widget _buildReviewCard(Map<String, dynamic> review) {
+  Widget _buildReviewCard(
+      Map<String, dynamic> review, String? userPhotoBase64) {
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
       child: Padding(
@@ -872,11 +893,22 @@ class _RestaurantProfilePageState extends State<RestaurantProfilePage>
             Row(
               children: [
                 CircleAvatar(
+                  radius: 24,
                   backgroundColor: Colors.deepPurple[100],
-                  child: Text(
-                    (review['userName'] ?? 'U')[0].toUpperCase(),
-                    style: TextStyle(color: Colors.deepPurple[800]),
-                  ),
+                  backgroundImage: (review['userPhotoBase64'] != null &&
+                          (review['userPhotoBase64'] as String).isNotEmpty)
+                      ? MemoryImage(base64Decode(review['userPhotoBase64']))
+                      : null,
+                  child: (review['userPhotoBase64'] == null ||
+                          (review['userPhotoBase64'] as String).isEmpty)
+                      ? Text(
+                          (review['userName'] ?? 'U')[0].toUpperCase(),
+                          style: TextStyle(
+                            color: Colors.deepPurple[800],
+                            fontWeight: FontWeight.bold,
+                          ),
+                        )
+                      : null,
                 ),
                 const SizedBox(width: 12),
                 Expanded(

@@ -227,9 +227,10 @@ class _UserProfilePageState extends State<UserProfilePage>
                 CircleAvatar(
                   radius: 50,
                   backgroundColor: Colors.grey[200],
-                  backgroundImage: userPhotoBase64 != null && userPhotoBase64.isNotEmpty
-                      ? MemoryImage(base64Decode(userPhotoBase64))
-                      : null,
+                  backgroundImage:
+                      userPhotoBase64 != null && userPhotoBase64.isNotEmpty
+                          ? MemoryImage(base64Decode(userPhotoBase64))
+                          : null,
                   child: userPhotoBase64 == null || userPhotoBase64.isEmpty
                       ? Text(
                           userName.isNotEmpty ? userName[0].toUpperCase() : 'U',

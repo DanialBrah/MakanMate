@@ -19,7 +19,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
   final _usernameController = TextEditingController();
   final _emailController = TextEditingController();
 
-  String? _photoBase64; // More accurate name
+  String? _userphotoBase64; // More accurate name
   File? _newProfileImageFile;
 
   bool _isSaving = false;
@@ -33,8 +33,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
   Future<void> _loadCurrentUserData() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
-      _emailController.text = user.email ?? '';
-      _photoBase64 = user.photoBase64;
+      _emailController.text = user.email ?? '';     
 
       final doc = await FirebaseFirestore.instance
           .collection('users')
@@ -45,7 +44,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
         if (data != null) {
           _usernameController.text = data['username'] ?? '';
           // Load photoUrl from Firestore if it exists (this might be more up-to-date)
-          _photoBase64 = data['photoBase64'] ?? _photoBase64;
+          _userphotoBase64 = data['photoBase64'] ?? _userphotoBase64;
         }
       }
 
@@ -75,7 +74,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
         final newUsername = _usernameController.text.trim();
         final newEmail = _emailController.text.trim();
 
-        String? newPhotoBase64 = _photoBase64;
+        String? newPhotoBase64 = _userphotoBase64;
 
         // Convert image to base64 if new image selected
         if (_newProfileImageFile != null) {
@@ -163,17 +162,17 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
   @override
   Widget build(BuildContext context) {
-    late final ImageProvider displayImage;
+    ImageProvider? displayImage;
     if (_newProfileImageFile != null) {
       displayImage = FileImage(_newProfileImageFile!);
-    } else if (_photoBase64 != null && _photoBase64!.isNotEmpty) {
+    } else if (_userphotoBase64 != null && _userphotoBase64!.isNotEmpty) {
       try {
-        displayImage = MemoryImage(base64Decode(_photoBase64!));
+        displayImage = MemoryImage(base64Decode(_userphotoBase64!));
       } catch (_) {
-        displayImage = const AssetImage('assets/steak.jpg');
+        displayImage = null;
       }
     } else {
-      displayImage = const AssetImage('assets/steak.jpg');
+      displayImage = null;
     }
 
     return Scaffold(
@@ -194,7 +193,20 @@ class _EditProfilePageState extends State<EditProfilePage> {
                   children: [
                     CircleAvatar(
                       radius: 60,
+                      backgroundColor: Colors.deepPurple[100],
                       backgroundImage: displayImage,
+                      child: displayImage == null
+                          ? Text(
+                              _usernameController.text.isNotEmpty
+                                  ? _usernameController.text[0].toUpperCase()
+                                  : 'U',
+                              style: const TextStyle(
+                                fontSize: 28,
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            )
+                          : null,
                     ),
                     Container(
                       decoration: BoxDecoration(
@@ -276,8 +288,4 @@ class _EditProfilePageState extends State<EditProfilePage> {
       ),
     );
   }
-}
-
-extension on User {
-  String? get photoBase64 => null;
 }

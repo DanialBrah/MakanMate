@@ -52,17 +52,12 @@ class PostCard extends StatelessWidget {
                   CircleAvatar(
                     radius: 24,
                     backgroundColor: Colors.deepPurple[100],
-                    backgroundImage:
-                        post.imageBase64 != null && post.imageBase64!.isNotEmpty
-                            ? MemoryImage(base64Decode(post.imageBase64!))
-                            : (post.imageBase64 != null &&
-                                    post.imageBase64!.isNotEmpty
-                                ? NetworkImage(post.imageBase64!)
-                                : null),
-                    child: (post.imageBase64 != null &&
-                                post.imageBase64!.isNotEmpty) ||
-                            (post.imageBase64 != null &&
-                                post.imageBase64!.isNotEmpty)
+                    backgroundImage: (post.userPhotoBase64 != null &&
+                            post.userPhotoBase64!.isNotEmpty)
+                        ? MemoryImage(base64Decode(post.userPhotoBase64!))
+                        : null,
+                    child: (post.userPhotoBase64 != null &&
+                            post.userPhotoBase64!.isNotEmpty)
                         ? null
                         : Text(
                             post.userName.isNotEmpty
@@ -74,6 +69,7 @@ class PostCard extends StatelessWidget {
                             ),
                           ),
                   ),
+
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(
@@ -247,7 +243,7 @@ class PostCard extends StatelessWidget {
             const SizedBox(height: 12),
 
             // Image (if available)
-            if (post.imageBase64 != null && post.imageBase64!.isNotEmpty)
+            if (post.postPhotoBase64 != null && post.postPhotoBase64!.isNotEmpty)
               Container(
                 width: double.infinity,
                 height: 200,
@@ -258,7 +254,7 @@ class PostCard extends StatelessWidget {
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(12),
                   child: Image.memory(
-                    base64Decode(post.imageBase64!),
+                    base64Decode(post.postPhotoBase64!),
                     fit: BoxFit.cover,
                   ),
                 ),

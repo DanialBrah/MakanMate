@@ -42,7 +42,7 @@ class PostService {
       }
 
       // Create post with Base64 image
-      final postWithImage = post.copyWith(imageBase64: base64Image);
+      final postWithImage = post.copyWith(postPhotoBase64: base64Image);
 
       // Add post to Firestore
       final docRef =
@@ -186,7 +186,10 @@ class PostService {
       }
 
       // Update the Firestore document
-      await _firestore.collection('posts').doc(postId).update(updates);
+      await FirebaseFirestore.instance
+          .collection('posts')
+          .doc(postId)
+          .update(updates);
     } catch (e) {
       throw Exception('Failed to update post: $e');
     }
