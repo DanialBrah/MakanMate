@@ -21,8 +21,14 @@ class HomePage extends StatefulWidget {
   State<HomePage> createState() => _HomePageState();
 }
 
-class _HomePageState extends State<HomePage> {
+class _HomePageState extends State<HomePage>
+    with AutomaticKeepAliveClientMixin {
   final PostService _postService = PostService();
+  @override
+  bool get wantKeepAlive => true;
+
+  bool _isLoading = true;
+
   String _firestoreUsername = 'User';
   String _firestoreUserRole = 'Member'; // default role
   String? _userProfileUrl;
@@ -46,6 +52,12 @@ class _HomePageState extends State<HomePage> {
   // Available filter options
   List<String> _availableLocations = [];
   List<String> _availableTags = [];
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _loadUsernameAndRoleFromFirestore();
+  }
 
   void _onBottomNavTap(int index) {
     if (index == 2) {
@@ -80,6 +92,7 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> _loadUsernameAndRoleFromFirestore() async {
     final user = FirebaseAuth.instance.currentUser;
+    print(user);
     if (user != null) {
       final doc = await FirebaseFirestore.instance
           .collection('users')
@@ -90,9 +103,20 @@ class _HomePageState extends State<HomePage> {
         final data = doc.data()!;
         setState(() {
           _firestoreUsername = data['username'] ?? 'User';
+          print("Firestore Username: $data['username']");
           _firestoreUserRole = data['role'] ?? 'Member';
+          print("Firestore Role: $data['role']");
+          _isLoading = false;
+        });
+      } else {
+        setState(() {
+          _isLoading = false;
         });
       }
+    } else {
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
 
@@ -543,6 +567,8 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context); // Required for AutomaticKeepAliveClientMixin
+    if (_isLoading) return const Center(child: CircularProgressIndicator());
     final List<Widget> _pages = [
       _buildHomeContent(),
       const RestaurantSearchPage(),

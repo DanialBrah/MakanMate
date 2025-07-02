@@ -5,7 +5,7 @@ import 'dart:async';
 import './pages/login_page.dart';
 import 'firebase_options.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'pages/home_page.dart'; // <-- New import
+import 'pages/home_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -53,16 +53,38 @@ class MyApp extends StatelessWidget {
           ),
         ),
       ),
-      routes: {
-        '/': (context) => HomePage(
-              userRole: FirebaseAuth.instance.currentUser != null
-                  ? 'User' // You might want to fetch the actual role from Firestore
-                  : 'User',
+      // Remove the routes and use the AuthWrapper instead
+      home: const AuthWrapper(),
+    );
+  }
+}
+
+// Create an AuthWrapper to handle authentication state
+class AuthWrapper extends StatelessWidget {
+  const AuthWrapper({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<User?>(
+      stream: FirebaseAuth.instance.authStateChanges(),
+      builder: (context, snapshot) {
+        // Show loading screen while checking auth state
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(
+            body: Center(
+              child: CircularProgressIndicator(),
             ),
-        '/login': (context) => const BeautifulLoginPage(),
+          );
+        }
+
+        // If user is logged in, show HomePage
+        if (snapshot.hasData && snapshot.data != null) {
+          return const HomePage(userRole: 'User');
+        }
+
+        // If user is not logged in, show SplashScreen
+        return const SplashScreen();
       },
-      // Specify initial route based on auth state
-      initialRoute: FirebaseAuth.instance.currentUser == null ? '/login' : '/',
     );
   }
 }
@@ -101,9 +123,11 @@ class _SplashScreenState extends State<SplashScreen>
 
     // Timer to show the button after 2 seconds
     Timer(const Duration(seconds: 2), () {
-      setState(() {
-        _showButton = true;
-      });
+      if (mounted) {
+        setState(() {
+          _showButton = true;
+        });
+      }
     });
   }
 

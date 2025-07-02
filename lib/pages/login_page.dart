@@ -88,12 +88,7 @@ class _BeautifulLoginPageState extends State<BeautifulLoginPage> {
         if (!mounted) return;
 
         // Navigate to home page with verified role
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => HomePage(userRole: _selectedRole!),
-          ),
-        );
+        Navigator.pushReplacementNamed(context, '/');
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
