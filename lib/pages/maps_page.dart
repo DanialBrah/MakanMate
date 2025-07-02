@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import '../models/restaurant.dart';
 
 class MapsPage extends StatefulWidget {
   const MapsPage({super.key});
@@ -18,6 +20,10 @@ class _MapsPageState extends State<MapsPage> {
   Restaurant? _selectedRestaurant;
   bool _isLoading = true;
   String _mapStyle = '';
+  String _userRole = '';
+  String _userId = '';
+  bool _isSettingLocation = false;
+  LatLng? _tempLocationForSetting;
 
   // Default location (Kuala Lumpur, Malaysia)
   static const CameraPosition _defaultLocation = CameraPosition(
@@ -29,8 +35,35 @@ class _MapsPageState extends State<MapsPage> {
   void initState() {
     super.initState();
     _loadMapStyle();
+    _getCurrentUser();
     _getCurrentLocation();
     _loadRestaurants();
+  }
+
+  Future<void> _getCurrentUser() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      _userId = user.uid;
+
+      // Get user role from Firestore
+      try {
+        final userDoc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .get();
+
+        if (userDoc.exists) {
+          setState(() {
+            _userRole = userDoc.data()?['role'] ?? 'user';
+          });
+        }
+      } catch (e) {
+        print('Error getting user role: $e');
+        setState(() {
+          _userRole = 'user'; // Default to user role
+        });
+      }
+    }
   }
 
   Future<void> _loadMapStyle() async {
@@ -101,8 +134,15 @@ class _MapsPageState extends State<MapsPage> {
 
   Future<void> _loadRestaurants() async {
     try {
-      // Load sample restaurants or from a separate restaurants collection
-      List<Restaurant> restaurants = await _getSampleRestaurants();
+      List<Restaurant> restaurants;
+
+      if (_userRole == 'Restaurant Owner') {
+        // Load owner's restaurants from Firestore
+        restaurants = await _getOwnerRestaurants();
+      } else {
+        // Load all restaurants for normal users
+        restaurants = await _getAllRestaurants();
+      }
 
       setState(() {
         _restaurants = restaurants;
@@ -117,9 +157,48 @@ class _MapsPageState extends State<MapsPage> {
     }
   }
 
+  Future<List<Restaurant>> _getOwnerRestaurants() async {
+    try {
+      final querySnapshot = await FirebaseFirestore.instance
+          .collection('restaurants')
+          .where('ownerId', isEqualTo: _userId)
+          .get();
+
+      return querySnapshot.docs.map((doc) {
+        final data = doc.data();
+        data['id'] = doc.id;
+        return Restaurant.fromMap(data);
+      }).toList();
+    } catch (e) {
+      print('Error getting owner restaurants: $e');
+      return [];
+    }
+  }
+
+  Future<List<Restaurant>> _getAllRestaurants() async {
+    try {
+      final querySnapshot =
+          await FirebaseFirestore.instance.collection('restaurants').get();
+
+      List<Restaurant> restaurants = querySnapshot.docs.map((doc) {
+        final data = doc.data();
+        data['id'] = doc.id;
+        return Restaurant.fromMap(data);
+      }).toList();
+
+      // Add sample restaurants if collection is empty
+      if (restaurants.isEmpty) {
+        restaurants = await _getSampleRestaurants();
+      }
+
+      return restaurants;
+    } catch (e) {
+      print('Error getting all restaurants: $e');
+      return await _getSampleRestaurants();
+    }
+  }
+
   Future<List<Restaurant>> _getSampleRestaurants() async {
-    // You can replace this with actual Firestore queries to a restaurants collection
-    // or integrate with Google Places API for real restaurant data
     return [
       Restaurant(
         id: '1',
@@ -224,8 +303,28 @@ class _MapsPageState extends State<MapsPage> {
             snippet: '${restaurant.cuisine} • ${restaurant.priceRange}',
           ),
           onTap: () {
-            _showRestaurantDetails(restaurant);
+            if (_userRole == 'Restaurant Owner') {
+              _showOwnerRestaurantOptions(restaurant);
+            } else {
+              _showRestaurantDetails(restaurant);
+            }
           },
+        ),
+      );
+    }
+
+    // Add temporary location marker for restaurant owners setting location
+    if (_tempLocationForSetting != null && _isSettingLocation) {
+      markers.add(
+        Marker(
+          markerId: const MarkerId('temp_location'),
+          position: _tempLocationForSetting!,
+          icon:
+              BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen),
+          infoWindow: const InfoWindow(
+            title: 'New Restaurant Location',
+            snippet: 'Tap to confirm',
+          ),
         ),
       );
     }
@@ -281,6 +380,360 @@ class _MapsPageState extends State<MapsPage> {
         },
       ),
     );
+  }
+
+  void _showOwnerRestaurantOptions(Restaurant restaurant) {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              restaurant.name,
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 16),
+            ListTile(
+              leading: const Icon(Icons.edit_location),
+              title: const Text('Update Location'),
+              onTap: () {
+                Navigator.pop(context);
+                _startLocationSetting(restaurant);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.edit),
+              title: const Text('Edit Details'),
+              onTap: () {
+                Navigator.pop(context);
+                _showEditRestaurantDialog(restaurant);
+              },
+            ),
+            ListTile(
+              leading: Icon(
+                restaurant.isOpen ? Icons.store : Icons.store_mall_directory,
+                color: restaurant.isOpen ? Colors.green : Colors.red,
+              ),
+              title:
+                  Text(restaurant.isOpen ? 'Mark as Closed' : 'Mark as Open'),
+              onTap: () {
+                Navigator.pop(context);
+                _toggleRestaurantStatus(restaurant);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _startLocationSetting(Restaurant? restaurant) {
+    setState(() {
+      _isSettingLocation = true;
+      _tempLocationForSetting = restaurant != null
+          ? LatLng(restaurant.latitude, restaurant.longitude)
+          : _currentPosition != null
+              ? LatLng(_currentPosition!.latitude, _currentPosition!.longitude)
+              : const LatLng(3.139, 101.6869);
+    });
+    _createMarkers();
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Tap on the map to set restaurant location'),
+        duration: Duration(seconds: 3),
+      ),
+    );
+  }
+
+  void _confirmLocationSetting(Restaurant? restaurant) {
+    if (_tempLocationForSetting == null) return;
+
+    if (restaurant != null) {
+      _updateRestaurantLocation(restaurant, _tempLocationForSetting!);
+    } else {
+      _showNewRestaurantDialog(_tempLocationForSetting!);
+    }
+
+    setState(() {
+      _isSettingLocation = false;
+      _tempLocationForSetting = null;
+    });
+    _createMarkers();
+  }
+
+  void _cancelLocationSetting() {
+    setState(() {
+      _isSettingLocation = false;
+      _tempLocationForSetting = null;
+    });
+    _createMarkers();
+  }
+
+  Future<void> _updateRestaurantLocation(
+      Restaurant restaurant, LatLng newLocation) async {
+    try {
+      await FirebaseFirestore.instance
+          .collection('restaurants')
+          .doc(restaurant.id)
+          .update({
+        'latitude': newLocation.latitude,
+        'longitude': newLocation.longitude,
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('Restaurant location updated successfully')),
+      );
+
+      _loadRestaurants(); // Reload to show updated location
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error updating location: $e')),
+      );
+    }
+  }
+
+  void _showNewRestaurantDialog(LatLng location) {
+    final nameController = TextEditingController();
+    final addressController = TextEditingController();
+    final cuisineController = TextEditingController();
+    final priceRangeController = TextEditingController();
+    final openingHoursController = TextEditingController();
+    final phoneController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Add New Restaurant'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: nameController,
+                decoration: const InputDecoration(labelText: 'Restaurant Name'),
+              ),
+              TextField(
+                controller: addressController,
+                decoration: const InputDecoration(labelText: 'Address'),
+              ),
+              TextField(
+                controller: cuisineController,
+                decoration: const InputDecoration(labelText: 'Cuisine Type'),
+              ),
+              TextField(
+                controller: priceRangeController,
+                decoration: const InputDecoration(
+                    labelText: 'Price Range (e.g., RM 10-30)'),
+              ),
+              TextField(
+                controller: openingHoursController,
+                decoration: const InputDecoration(labelText: 'Opening Hours'),
+              ),
+              TextField(
+                controller: phoneController,
+                decoration: const InputDecoration(labelText: 'Phone Number'),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              if (nameController.text.isNotEmpty) {
+                _saveNewRestaurant(
+                  location,
+                  nameController.text,
+                  addressController.text,
+                  cuisineController.text,
+                  priceRangeController.text,
+                  openingHoursController.text,
+                  phoneController.text,
+                );
+                Navigator.pop(context);
+              }
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _saveNewRestaurant(
+    LatLng location,
+    String name,
+    String address,
+    String cuisine,
+    String priceRange,
+    String openingHours,
+    String phone,
+  ) async {
+    try {
+      await FirebaseFirestore.instance.collection('restaurants').add({
+        'name': name,
+        'address': address,
+        'latitude': location.latitude,
+        'longitude': location.longitude,
+        'cuisine': cuisine,
+        'rating': 0.0,
+        'priceRange': priceRange,
+        'isOpen': true,
+        'openingHours': openingHours,
+        'phoneNumber': phone,
+        'ownerId': _userId,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Restaurant added successfully')),
+      );
+
+      _loadRestaurants();
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error adding restaurant: $e')),
+      );
+    }
+  }
+
+  void _showEditRestaurantDialog(Restaurant restaurant) {
+    final nameController = TextEditingController(text: restaurant.name);
+    final addressController = TextEditingController(text: restaurant.address);
+    final cuisineController = TextEditingController(text: restaurant.cuisine);
+    final priceRangeController =
+        TextEditingController(text: restaurant.priceRange);
+    final openingHoursController =
+        TextEditingController(text: restaurant.openingHours);
+    final phoneController = TextEditingController(text: restaurant.phoneNumber);
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Edit Restaurant'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: nameController,
+                decoration: const InputDecoration(labelText: 'Restaurant Name'),
+              ),
+              TextField(
+                controller: addressController,
+                decoration: const InputDecoration(labelText: 'Address'),
+              ),
+              TextField(
+                controller: cuisineController,
+                decoration: const InputDecoration(labelText: 'Cuisine Type'),
+              ),
+              TextField(
+                controller: priceRangeController,
+                decoration: const InputDecoration(labelText: 'Price Range'),
+              ),
+              TextField(
+                controller: openingHoursController,
+                decoration: const InputDecoration(labelText: 'Opening Hours'),
+              ),
+              TextField(
+                controller: phoneController,
+                decoration: const InputDecoration(labelText: 'Phone Number'),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              _updateRestaurantDetails(
+                restaurant,
+                nameController.text,
+                addressController.text,
+                cuisineController.text,
+                priceRangeController.text,
+                openingHoursController.text,
+                phoneController.text,
+              );
+              Navigator.pop(context);
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _updateRestaurantDetails(
+    Restaurant restaurant,
+    String name,
+    String address,
+    String cuisine,
+    String priceRange,
+    String openingHours,
+    String phone,
+  ) async {
+    try {
+      await FirebaseFirestore.instance
+          .collection('restaurants')
+          .doc(restaurant.id)
+          .update({
+        'name': name,
+        'address': address,
+        'cuisine': cuisine,
+        'priceRange': priceRange,
+        'openingHours': openingHours,
+        'phoneNumber': phone,
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Restaurant updated successfully')),
+      );
+
+      _loadRestaurants();
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error updating restaurant: $e')),
+      );
+    }
+  }
+
+  Future<void> _toggleRestaurantStatus(Restaurant restaurant) async {
+    try {
+      await FirebaseFirestore.instance
+          .collection('restaurants')
+          .doc(restaurant.id)
+          .update({
+        'isOpen': !restaurant.isOpen,
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Restaurant marked as ${!restaurant.isOpen ? 'open' : 'closed'}',
+          ),
+        ),
+      );
+
+      _loadRestaurants();
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error updating restaurant status: $e')),
+      );
+    }
   }
 
   Widget _buildRestaurantCard(Restaurant restaurant) {
@@ -415,23 +868,45 @@ class _MapsPageState extends State<MapsPage> {
                 ),
               ],
             ),
+            if (_userRole != 'Restaurant Owner') ...[
+              const SizedBox(height: 8),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () => _viewFullDetails(restaurant),
+                  icon: const Icon(Icons.info_outline),
+                  label: const Text('View Full Details'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue[600],
+                    foregroundColor: Colors.white,
+                  ),
+                ),
+              ),
+            ],
           ],
         ),
       ),
     );
   }
 
+  void _viewFullDetails(Restaurant restaurant) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => RestaurantDetailPage(restaurant: restaurant),
+      ),
+    );
+  }
+
   void _getDirections(Restaurant restaurant) {
-    // Implement directions functionality
-    // You can use url_launcher to open Google Maps with directions
+    // Implement directions functionality using url_launcher
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('Getting directions to ${restaurant.name}...')),
     );
   }
 
   void _callRestaurant(Restaurant restaurant) {
-    // Implement call functionality
-    // You can use url_launcher to make a phone call
+    // Implement call functionality using url_launcher
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('Calling ${restaurant.name}...')),
     );
@@ -450,6 +925,15 @@ class _MapsPageState extends State<MapsPage> {
     }
   }
 
+  void _onMapTap(LatLng location) {
+    if (_isSettingLocation) {
+      setState(() {
+        _tempLocationForSetting = location;
+      });
+      _createMarkers();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -457,14 +941,20 @@ class _MapsPageState extends State<MapsPage> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        title: const Text(
-          'Restaurant Map',
-          style: TextStyle(
+        title: Text(
+          _userRole == 'Restaurant Owner' ? 'My Restaurants' : 'Restaurant Map',
+          style: const TextStyle(
             color: Colors.black,
             fontWeight: FontWeight.bold,
           ),
         ),
         actions: [
+          if (_userRole == 'Restaurant Owner' && !_isSettingLocation)
+            IconButton(
+              icon: const Icon(Icons.add_location, color: Colors.black),
+              onPressed: () => _startLocationSetting(null),
+              tooltip: 'Add restaurant location',
+            ),
           IconButton(
             icon: const Icon(Icons.my_location, color: Colors.black),
             onPressed: _getCurrentLocation,
@@ -495,6 +985,7 @@ class _MapsPageState extends State<MapsPage> {
               children: [
                 GoogleMap(
                   onMapCreated: _onMapCreated,
+                  onTap: _onMapTap,
                   initialCameraPosition: _currentPosition != null
                       ? CameraPosition(
                           target: LatLng(_currentPosition!.latitude,
@@ -510,42 +1001,108 @@ class _MapsPageState extends State<MapsPage> {
                   zoomControlsEnabled: false,
                 ),
 
-                // Search bar overlay
-                Positioned(
-                  top: 16,
-                  left: 16,
-                  right: 16,
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: TextField(
-                      decoration: InputDecoration(
-                        hintText: 'Search restaurants...',
-                        prefixIcon: const Icon(Icons.search),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide.none,
-                        ),
-                        filled: true,
-                        fillColor: Colors.white,
-                        contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 12),
+                // Location setting controls for restaurant owners
+                if (_isSettingLocation)
+                  Positioned(
+                    top: 16,
+                    left: 16,
+                    right: 16,
+                    child: Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.green[100],
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.1),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
                       ),
-                      onSubmitted: (value) {
-                        _searchRestaurants(value);
-                      },
+                      child: Column(
+                        children: [
+                          const Text(
+                            'Setting Restaurant Location',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          const Text(
+                            'Tap on the map to set the location',
+                            style: TextStyle(fontSize: 14),
+                          ),
+                          const SizedBox(height: 12),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: ElevatedButton(
+                                  onPressed: () =>
+                                      _confirmLocationSetting(null),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.green,
+                                    foregroundColor: Colors.white,
+                                  ),
+                                  child: const Text('Confirm'),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: ElevatedButton(
+                                  onPressed: _cancelLocationSetting,
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.red,
+                                    foregroundColor: Colors.white,
+                                  ),
+                                  child: const Text('Cancel'),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                ),
+
+                // Search bar overlay (only for normal users)
+                if (_userRole != 'Restaurant Owner' && !_isSettingLocation)
+                  Positioned(
+                    top: 16,
+                    left: 16,
+                    right: 16,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.1),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: TextField(
+                        decoration: InputDecoration(
+                          hintText: 'Search restaurants...',
+                          prefixIcon: const Icon(Icons.search),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide.none,
+                          ),
+                          filled: true,
+                          fillColor: Colors.white,
+                          contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 12),
+                        ),
+                        onSubmitted: (value) {
+                          _searchRestaurants(value);
+                        },
+                      ),
+                    ),
+                  ),
 
                 // Legend overlay
                 Positioned(
@@ -616,13 +1173,32 @@ class _MapsPageState extends State<MapsPage> {
                             const Text('You', style: TextStyle(fontSize: 12)),
                           ],
                         ),
+                        if (_isSettingLocation) ...[
+                          const SizedBox(height: 4),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                width: 12,
+                                height: 12,
+                                decoration: const BoxDecoration(
+                                  color: Colors.green,
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              const Text('New Location',
+                                  style: TextStyle(fontSize: 12)),
+                            ],
+                          ),
+                        ],
                       ],
                     ),
                   ),
                 ),
 
                 // Info panel for selected restaurant
-                if (_selectedRestaurant != null)
+                if (_selectedRestaurant != null && !_isSettingLocation)
                   Positioned(
                     bottom: 16,
                     left: 16,
@@ -770,63 +1346,239 @@ class _MapsPageState extends State<MapsPage> {
   }
 }
 
-// Restaurant model class
-class Restaurant {
-  final String id;
-  final String name;
-  final String address;
-  final double latitude;
-  final double longitude;
-  final String cuisine;
-  final double rating;
-  final String priceRange;
-  final bool isOpen;
-  final String openingHours;
-  final String phoneNumber;
+// Separate page for detailed restaurant view (for normal users)
+class RestaurantDetailPage extends StatelessWidget {
+  final Restaurant restaurant;
 
-  Restaurant({
-    required this.id,
-    required this.name,
-    required this.address,
-    required this.latitude,
-    required this.longitude,
-    required this.cuisine,
-    required this.rating,
-    required this.priceRange,
-    required this.isOpen,
-    required this.openingHours,
-    required this.phoneNumber,
-  });
+  const RestaurantDetailPage({super.key, required this.restaurant});
 
-  factory Restaurant.fromMap(Map<String, dynamic> map) {
-    return Restaurant(
-      id: map['id'] ?? '',
-      name: map['name'] ?? '',
-      address: map['address'] ?? '',
-      latitude: map['latitude']?.toDouble() ?? 0.0,
-      longitude: map['longitude']?.toDouble() ?? 0.0,
-      cuisine: map['cuisine'] ?? '',
-      rating: map['rating']?.toDouble() ?? 0.0,
-      priceRange: map['priceRange'] ?? '',
-      isOpen: map['isOpen'] ?? false,
-      openingHours: map['openingHours'] ?? '',
-      phoneNumber: map['phoneNumber'] ?? '',
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(restaurant.name),
+        backgroundColor: Colors.deepPurple[800],
+        foregroundColor: Colors.white,
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Restaurant Image Placeholder
+            Container(
+              width: double.infinity,
+              height: 200,
+              decoration: BoxDecoration(
+                color: Colors.grey[300],
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(
+                Icons.restaurant,
+                size: 80,
+                color: Colors.grey[600],
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // Restaurant Info
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            restaurant.name,
+                            style: const TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color:
+                                restaurant.isOpen ? Colors.green : Colors.red,
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(
+                            restaurant.isOpen ? 'OPEN' : 'CLOSED',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      restaurant.cuisine,
+                      style: TextStyle(
+                        fontSize: 18,
+                        color: Colors.deepPurple[600],
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Icon(Icons.star, color: Colors.amber, size: 24),
+                        const SizedBox(width: 4),
+                        Text(
+                          restaurant.rating.toString(),
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Icon(Icons.attach_money, color: Colors.green, size: 24),
+                        Text(
+                          restaurant.priceRange,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
+            // Contact Information
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Contact Information',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Icon(Icons.location_on, color: Colors.red, size: 20),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            restaurant.address,
+                            style: const TextStyle(fontSize: 16),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Icon(Icons.phone, color: Colors.green, size: 20),
+                        const SizedBox(width: 8),
+                        Text(
+                          restaurant.phoneNumber,
+                          style: const TextStyle(fontSize: 16),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Icon(Icons.access_time, color: Colors.blue, size: 20),
+                        const SizedBox(width: 8),
+                        Text(
+                          restaurant.openingHours,
+                          style: const TextStyle(fontSize: 16),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
+            // Action Buttons
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      // Implement directions
+                    },
+                    icon: const Icon(Icons.directions),
+                    label: const Text('Get Directions'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.deepPurple[800],
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      // Implement call
+                    },
+                    icon: const Icon(Icons.phone),
+                    label: const Text('Call Now'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 16),
+
+            // Reviews Section (Placeholder)
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Reviews',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      'Reviews feature coming soon!',
+                      style: TextStyle(
+                        color: Colors.grey[600],
+                        fontSize: 16,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
-  }
-
-  Map<String, dynamic> toMap() {
-    return {
-      'id': id,
-      'name': name,
-      'address': address,
-      'latitude': latitude,
-      'longitude': longitude,
-      'cuisine': cuisine,
-      'rating': rating,
-      'priceRange': priceRange,
-      'isOpen': isOpen,
-      'openingHours': openingHours,
-      'phoneNumber': phoneNumber,
-    };
   }
 }
