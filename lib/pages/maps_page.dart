@@ -502,10 +502,7 @@ class _MapsPageState extends State<MapsPage> {
   void _showNewRestaurantDialog(LatLng location) {
     final nameController = TextEditingController();
     final addressController = TextEditingController();
-    final cuisineController = TextEditingController();
-    final priceRangeController = TextEditingController();
-    final openingHoursController = TextEditingController();
-    final phoneController = TextEditingController();
+    final descriptionController = TextEditingController();
 
     showDialog(
       context: context,
@@ -524,21 +521,8 @@ class _MapsPageState extends State<MapsPage> {
                 decoration: const InputDecoration(labelText: 'Address'),
               ),
               TextField(
-                controller: cuisineController,
-                decoration: const InputDecoration(labelText: 'Cuisine Type'),
-              ),
-              TextField(
-                controller: priceRangeController,
-                decoration: const InputDecoration(
-                    labelText: 'Price Range (e.g., RM 10-30)'),
-              ),
-              TextField(
-                controller: openingHoursController,
-                decoration: const InputDecoration(labelText: 'Opening Hours'),
-              ),
-              TextField(
-                controller: phoneController,
-                decoration: const InputDecoration(labelText: 'Phone Number'),
+                controller: descriptionController,
+                decoration: const InputDecoration(labelText: 'Description'),
               ),
             ],
           ),
@@ -552,13 +536,10 @@ class _MapsPageState extends State<MapsPage> {
             onPressed: () {
               if (nameController.text.isNotEmpty) {
                 _saveNewRestaurant(
-                  location,
                   nameController.text,
                   addressController.text,
-                  cuisineController.text,
-                  priceRangeController.text,
-                  openingHoursController.text,
-                  phoneController.text,
+                  location,
+                  descriptionController.text,
                 );
                 Navigator.pop(context);
               }
@@ -571,26 +552,18 @@ class _MapsPageState extends State<MapsPage> {
   }
 
   Future<void> _saveNewRestaurant(
-    LatLng location,
     String name,
     String address,
-    String cuisine,
-    String priceRange,
-    String openingHours,
-    String phone,
+    LatLng location,
+    String description,
   ) async {
     try {
-      await FirebaseFirestore.instance.collection('restaurants').add({
+      await FirebaseFirestore.instance.collection('locations').add({
         'name': name,
         'address': address,
         'latitude': location.latitude,
         'longitude': location.longitude,
-        'cuisine': cuisine,
-        'rating': 0.0,
-        'priceRange': priceRange,
-        'isOpen': true,
-        'openingHours': openingHours,
-        'phoneNumber': phone,
+        'description': description,
         'ownerId': _userId,
         'createdAt': FieldValue.serverTimestamp(),
       });
