@@ -856,7 +856,7 @@ class _MapsPageState extends State<MapsPage> {
                   myLocationButtonEnabled: false,
                   compassEnabled: true,
                   mapToolbarEnabled: false,
-                  zoomControlsEnabled: false,
+                  zoomControlsEnabled: false, // We will add custom controls
                 ),
 
                 // Location setting controls for location owners
@@ -1127,6 +1127,48 @@ class _MapsPageState extends State<MapsPage> {
                       ),
                     ),
                   ),
+
+                // Zoom in/out buttons
+                Positioned(
+                  bottom: 90,
+                  right: 16,
+                  child: Column(
+                    children: [
+                      FloatingActionButton(
+                        heroTag: 'zoom_in',
+                        mini: true,
+                        backgroundColor: Colors.white,
+                        child: const Icon(Icons.add, color: Colors.deepPurple),
+                        onPressed: () async {
+                          if (_mapController != null) {
+                            final currentZoom =
+                                await _mapController!.getZoomLevel();
+                            _mapController!.animateCamera(
+                              CameraUpdate.zoomTo(currentZoom + 1),
+                            );
+                          }
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      FloatingActionButton(
+                        heroTag: 'zoom_out',
+                        mini: true,
+                        backgroundColor: Colors.white,
+                        child:
+                            const Icon(Icons.remove, color: Colors.deepPurple),
+                        onPressed: () async {
+                          if (_mapController != null) {
+                            final currentZoom =
+                                await _mapController!.getZoomLevel();
+                            _mapController!.animateCamera(
+                              CameraUpdate.zoomTo(currentZoom - 1),
+                            );
+                          }
+                        },
+                      ),
+                    ],
+                  ),
+                ),
               ],
             ),
     );

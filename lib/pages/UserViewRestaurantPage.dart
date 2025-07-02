@@ -4,6 +4,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../models/post_model.dart';
 import '../services/post_service.dart';
 import '../widgets/menu_item_card.dart';
+import 'dart:convert';
+import 'dart:typed_data';
 
 class UserViewRestaurantPage extends StatefulWidget {
   final Map<String, dynamic> restaurantData;
@@ -74,18 +76,29 @@ class _UserViewRestaurantPageState extends State<UserViewRestaurantPage>
                 background: Stack(
                   fit: StackFit.expand,
                   children: [
-                    widget.restaurantData['profileImageUrl'] != null &&
-                            widget.restaurantData['profileImageUrl']
+                    widget.restaurantData['photoBase64'] != null &&
+                            widget.restaurantData['photoBase64']
                                 .toString()
                                 .isNotEmpty
-                        ? Image.network(
-                            widget.restaurantData['profileImageUrl'],
+                        ? Image.memory(
+                            base64Decode(widget.restaurantData['photoBase64']),
                             fit: BoxFit.cover,
                             errorBuilder: (context, error, stackTrace) {
                               return _buildDefaultHeroImage();
                             },
                           )
-                        : _buildDefaultHeroImage(),
+                        : widget.restaurantData['profileImageUrl'] != null &&
+                                widget.restaurantData['profileImageUrl']
+                                    .toString()
+                                    .isNotEmpty
+                            ? Image.network(
+                                widget.restaurantData['profileImageUrl'],
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) {
+                                  return _buildDefaultHeroImage();
+                                },
+                              )
+                            : _buildDefaultHeroImage(),
                     Container(
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
@@ -500,10 +513,24 @@ class _UserViewRestaurantPageState extends State<UserViewRestaurantPage>
               children: [
                 CircleAvatar(
                   backgroundColor: Colors.deepPurple[100],
-                  child: Text(
-                    (review['userName'] ?? 'U')[0].toUpperCase(),
-                    style: TextStyle(color: Colors.deepPurple[800]),
-                  ),
+                  backgroundImage: review['userPhotoBase64'] != null &&
+                          review['userPhotoBase64'].toString().isNotEmpty
+                      ? MemoryImage(base64Decode(review['userPhotoBase64']))
+                      : (review['userPhotoBase64'] != null &&
+                              review['userPhotoBase64'].toString().isNotEmpty
+                          ? NetworkImage(review['userPhotoBase64'])
+                          : null),
+                  child: (review['userPhotoBase64'] != null &&
+                              review['userPhotoBase64']
+                                  .toString()
+                                  .isNotEmpty) ||
+                          (review['userPhotoBase64'] != null &&
+                              review['userPhotoBase64'].toString().isNotEmpty)
+                      ? null
+                      : Text(
+                          (review['userName'] ?? 'U')[0].toUpperCase(),
+                          style: TextStyle(color: Colors.deepPurple[800]),
+                        ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(

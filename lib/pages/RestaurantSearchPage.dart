@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'UserViewRestaurantPage.dart';
+import 'dart:convert';
 
 class RestaurantSearchPage extends StatefulWidget {
   const RestaurantSearchPage({super.key});
@@ -82,7 +83,7 @@ class _RestaurantSearchPageState extends State<RestaurantSearchPage> {
               ],
             ),
           ),
-          
+
           Expanded(
             child: Padding(
               padding: const EdgeInsets.all(16),
@@ -158,7 +159,7 @@ class _RestaurantSearchPageState extends State<RestaurantSearchPage> {
                           ),
                           const SizedBox(height: 16),
                           Text(
-                            _searchQuery.isEmpty 
+                            _searchQuery.isEmpty
                                 ? 'No restaurants found'
                                 : 'No matching restaurants',
                             style: TextStyle(
@@ -185,7 +186,8 @@ class _RestaurantSearchPageState extends State<RestaurantSearchPage> {
                   return ListView.builder(
                     itemCount: filtered.length,
                     itemBuilder: (context, index) {
-                      final data = filtered[index].data() as Map<String, dynamic>;
+                      final data =
+                          filtered[index].data() as Map<String, dynamic>;
                       return Padding(
                         padding: const EdgeInsets.only(bottom: 16.0),
                         child: _buildRestaurantCard(data),
@@ -221,7 +223,8 @@ class _RestaurantSearchPageState extends State<RestaurantSearchPage> {
             Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (context) => UserViewRestaurantPage(restaurantData: data),
+                builder: (context) =>
+                    UserViewRestaurantPage(restaurantData: data),
               ),
             );
           },
@@ -239,27 +242,17 @@ class _RestaurantSearchPageState extends State<RestaurantSearchPage> {
                   ),
                   color: Colors.grey[200],
                 ),
-                child: data['profileImageUrl'] != null &&
-                        data['profileImageUrl'].toString().isNotEmpty
+                child: data['photoBase64'] != null &&
+                        data['photoBase64'].toString().isNotEmpty
                     ? ClipRRect(
                         borderRadius: const BorderRadius.vertical(
                           top: Radius.circular(20),
                         ),
-                        child: Image.network(
-                          data['profileImageUrl'],
+                        child: Image.memory(
+                          base64Decode(data['photoBase64']),
                           height: 200,
                           width: double.infinity,
                           fit: BoxFit.cover,
-                          loadingBuilder: (context, child, loadingProgress) {
-                            if (loadingProgress == null) return child;
-                            return Center(
-                              child: CircularProgressIndicator(
-                                valueColor: AlwaysStoppedAnimation<Color>(
-                                  Colors.deepPurple[800]!,
-                                ),
-                              ),
-                            );
-                          },
                           errorBuilder: (context, error, stackTrace) {
                             return Container(
                               color: Colors.grey[200],
@@ -295,7 +288,7 @@ class _RestaurantSearchPageState extends State<RestaurantSearchPage> {
                         ),
                       ),
               ),
-              
+
               // Content Section
               Padding(
                 padding: const EdgeInsets.all(20),
@@ -311,9 +304,9 @@ class _RestaurantSearchPageState extends State<RestaurantSearchPage> {
                         height: 1.2,
                       ),
                     ),
-                    
+
                     const SizedBox(height: 8),
-                    
+
                     // Address with icon
                     Row(
                       children: [
@@ -335,9 +328,9 @@ class _RestaurantSearchPageState extends State<RestaurantSearchPage> {
                         ),
                       ],
                     ),
-                    
+
                     const SizedBox(height: 12),
-                    
+
                     // View Details Button
                     Container(
                       padding: const EdgeInsets.symmetric(
@@ -370,7 +363,7 @@ class _RestaurantSearchPageState extends State<RestaurantSearchPage> {
                     ),
                   ],
                 ),
-              ),  
+              ),
             ],
           ),
         ),
