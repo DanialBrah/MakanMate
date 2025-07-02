@@ -9,6 +9,7 @@ import '../pages/createpost_page.dart';
 import '../widgets/edit_post_dialog.dart';
 import 'edit_profile_page.dart';
 import 'login_page.dart';
+import 'dart:convert';
 
 class UserProfilePage extends StatefulWidget {
   const UserProfilePage({super.key});
@@ -152,6 +153,7 @@ class _UserProfilePageState extends State<UserProfilePage>
     final userName = _userData?['username'] ?? user?.displayName ?? 'User';
     final userEmail = _userData?['email'] ?? user?.email ?? '';
     final userRole = _userData?['role'] ?? 'User';
+    final userPhotoBase64 = _userData?['photoBase64'];
 
     return Scaffold(
       backgroundColor: Colors.grey[50],
@@ -224,15 +226,20 @@ class _UserProfilePageState extends State<UserProfilePage>
                 // Profile Picture
                 CircleAvatar(
                   radius: 50,
-                  backgroundColor: Colors.deepPurple[800],
-                  child: Text(
-                    userName.isNotEmpty ? userName[0].toUpperCase() : 'U',
-                    style: const TextStyle(
-                      fontSize: 36,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
+                  backgroundColor: Colors.grey[200],
+                  backgroundImage: userPhotoBase64 != null && userPhotoBase64.isNotEmpty
+                      ? MemoryImage(base64Decode(userPhotoBase64))
+                      : null,
+                  child: userPhotoBase64 == null || userPhotoBase64.isEmpty
+                      ? Text(
+                          userName.isNotEmpty ? userName[0].toUpperCase() : 'U',
+                          style: const TextStyle(
+                            fontSize: 36,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        )
+                      : null,
                 ),
                 const SizedBox(height: 16),
 

@@ -2,23 +2,47 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'dart:io';
 import '../models/post_model.dart';
+import 'dart:convert';
 
 class PostService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseStorage _storage = FirebaseStorage.instance;
 
-  // Create a new post
+  // Convert image to Base64 string
+  Future<String> _convertImageToBase64(File imageFile) async {
+    try {
+      print('Starting image conversion to Base64');
+      print('Image file path: ${imageFile.path}');
+      print('File exists: ${await imageFile.exists()}');
+      print('File size: ${await imageFile.length()} bytes');
+
+      // Read file as bytes
+      final bytes = await imageFile.readAsBytes();
+      print('File read as bytes');
+
+      // Convert bytes to Base64 string
+      final base64String = base64Encode(bytes);
+      print('Base64 string generated');
+
+      return base64String;
+    } catch (e) {
+      print('Error converting image to Base64: $e');
+      throw Exception('Failed to convert image to Base64: $e');
+    }
+  }
+
+  // Create a new post with Base64 image
   Future<String> createPost(Post post, {File? imageFile}) async {
     try {
-      String? imageUrl;
+      String? base64Image;
 
-      // Upload image if provided
+      // Convert image to Base64 if provided
       if (imageFile != null) {
-        imageUrl = await _uploadImage(imageFile, post.userId);
+        base64Image = await _convertImageToBase64(imageFile);
       }
 
-      // Create post with image URL
-      final postWithImage = post.copyWith(imageUrl: imageUrl);
+      // Create post with Base64 image
+      final postWithImage = post.copyWith(imageBase64: base64Image);
 
       // Add post to Firestore
       final docRef =
@@ -27,21 +51,6 @@ class PostService {
       return docRef.id;
     } catch (e) {
       throw Exception('Failed to create post: $e');
-    }
-  }
-
-  // Upload image to Firebase Storage
-  Future<String> _uploadImage(File imageFile, String userId) async {
-    try {
-      final fileName = '${userId}_${DateTime.now().millisecondsSinceEpoch}.jpg';
-      final ref = _storage.ref().child('post_images').child(fileName);
-
-      final uploadTask = ref.putFile(imageFile);
-      final snapshot = await uploadTask;
-
-      return await snapshot.ref.getDownloadURL();
-    } catch (e) {
-      throw Exception('Failed to upload image: $e');
     }
   }
 
@@ -164,8 +173,19 @@ class PostService {
   }
 
   // Update post
-  Future<void> updatePost(String postId, Map<String, dynamic> updates) async {
+  Future<void> updatePost(String postId, Map<String, dynamic> updates,
+      {File? imageFile}) async {
     try {
+      // If there's a new image file, convert it to Base64
+      if (imageFile != null) {
+        final bytes = await imageFile.readAsBytes();
+        final base64Image = base64Encode(bytes);
+
+        // Save it in the 'imageBase64' field
+        updates['imageBase64'] = base64Image;
+      }
+
+      // Update the Firestore document
       await _firestore.collection('posts').doc(postId).update(updates);
     } catch (e) {
       throw Exception('Failed to update post: $e');
@@ -199,7 +219,6 @@ class PostService {
       }).toList();
     });
   }
-
 
   // OR if you want a separate implementation:
   Stream<List<Post>> getPostsByUserId(String userId) {

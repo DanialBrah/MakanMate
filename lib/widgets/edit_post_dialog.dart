@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
 import '../models/post_model.dart';
 import '../services/post_service.dart';
 
@@ -31,6 +33,7 @@ class _EditPostDialogState extends State<EditPostDialog> {
 
   double _rating = 1.0;
   bool _isLoading = false;
+  File? _newImageFile;
 
   @override
   void initState() {
@@ -62,6 +65,16 @@ class _EditPostDialogState extends State<EditPostDialog> {
     _priceController.dispose();
     _tagsController.dispose();
     super.dispose();
+  }
+
+  Future<void> _pickNewImage() async {
+    final picker = ImagePicker();
+    final XFile? image = await picker.pickImage(source: ImageSource.gallery);
+    if (image != null) {
+      setState(() {
+        _newImageFile = File(image.path);
+      });
+    }
   }
 
   Future<void> _updatePost() async {
@@ -101,7 +114,8 @@ class _EditPostDialogState extends State<EditPostDialog> {
         'tags': tags,
       };
 
-      await _postService.updatePost(widget.post.id, updates);
+      await _postService.updatePost(widget.post.id, updates,
+          imageFile: _newImageFile);
 
       if (mounted) {
         // Show success message
@@ -175,6 +189,44 @@ class _EditPostDialogState extends State<EditPostDialog> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
+                      GestureDetector(
+                        onTap: _pickNewImage,
+                        child: Container(
+                          height: 180,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(12),
+                            color: Colors.grey[200],
+                            image: _newImageFile != null
+                                ? DecorationImage(
+                                    image: FileImage(_newImageFile!),
+                                    fit: BoxFit.cover,
+                                  )
+                                : widget.post.imageUrl != null
+                                    ? DecorationImage(
+                                        image:
+                                            NetworkImage(widget.post.imageUrl!),
+                                        fit: BoxFit.cover,
+                                      )
+                                    : null,
+                          ),
+                          child: _newImageFile == null &&
+                                  widget.post.imageUrl == null
+                              ? Center(
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: const [
+                                      Icon(Icons.add_a_photo,
+                                          color: Colors.grey, size: 40),
+                                      SizedBox(height: 8),
+                                      Text('Tap to add image'),
+                                    ],
+                                  ),
+                                )
+                              : null,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
                       // Title Field
                       TextFormField(
                         controller: _titleController,
