@@ -11,6 +11,7 @@ import '../widgets/edit_post_dialog.dart';
 import '../pages/RestaurantSearchPage.dart';
 import '../pages/create_menu_item_page.dart';
 import '../pages/chatbot_page.dart';
+import '../pages/maps_page.dart';
 
 class HomePage extends StatefulWidget {
   final String userRole;
@@ -548,7 +549,7 @@ class _HomePageState extends State<HomePage> {
       const RestaurantSearchPage(),
       const SizedBox(),
       const ChatPageContent(),
-      // const MapPageContent(),
+      const MapsPage(), // Add this line
     ];
 
     return Scaffold(
@@ -640,7 +641,9 @@ class _HomePageState extends State<HomePage> {
               icon: Icon(Icons.add_circle, size: 40), label: ''),
           BottomNavigationBarItem(
               icon: Icon(Icons.chat_bubble_outline), label: 'Chat'),
-          BottomNavigationBarItem(icon: Icon(Icons.map), label: 'Map'),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.map),
+              label: 'Map'), // This should be uncommented
         ],
       ),
     );

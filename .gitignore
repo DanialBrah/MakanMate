@@ -25,6 +25,7 @@ migrate_working_dir/
 # Android specific
 android/app/google-services.json
 lib/firebase_options.dart
+android/app/src/main/AndroidManifest.xml
 
 
 # Flutter/Dart/Pub related
