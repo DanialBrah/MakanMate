@@ -3,6 +3,8 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'dart:io' show Platform;
 import '../models/location_model.dart';
 
 class MapsPage extends StatefulWidget {
@@ -204,7 +206,7 @@ class _MapsPageState extends State<MapsPage> {
         id: '1',
         name: 'Nasi Lemak Wanjo',
         address: 'Kampung Baru, Kuala Lumpur',
-        latitude: 1.5589,
+        latitude: 3.1589,
         longitude: 101.6942,
         phoneNumber: '+60 3-2691 3317',
       ),
@@ -234,7 +236,7 @@ class _MapsPageState extends State<MapsPage> {
       ),
       Location(
         id: '5',
-        name: 'Village Park Location',
+        name: 'Village Park Restaurant',
         address: 'Damansara Uptown, Petaling Jaya',
         latitude: 3.1319,
         longitude: 101.6261,
@@ -270,6 +272,7 @@ class _MapsPageState extends State<MapsPage> {
           position: LatLng(location.latitude, location.longitude),
           infoWindow: InfoWindow(
             title: location.name,
+            snippet: location.address,
           ),
           onTap: () {
             if (_userRole == 'Restaurant Owner') {
@@ -278,19 +281,6 @@ class _MapsPageState extends State<MapsPage> {
               _showLocationDetails(location);
             }
           },
-        ),
-      );
-    }
-
-    // Add location markers
-    for (Location location in _locations) {
-      markers.add(
-        Marker(
-          markerId: MarkerId(location.id),
-          position: LatLng(location.latitude, location.longitude),
-          infoWindow: InfoWindow(
-            title: location.name,
-          ),
         ),
       );
     }
@@ -415,7 +405,7 @@ class _MapsPageState extends State<MapsPage> {
 
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text('Tap on the map to set location location'),
+        content: Text('Tap on the map to set restaurant location'),
         duration: Duration(seconds: 3),
       ),
     );
@@ -457,7 +447,7 @@ class _MapsPageState extends State<MapsPage> {
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Location location updated successfully')),
+        const SnackBar(content: Text('Location updated successfully')),
       );
 
       _loadLocations(); // Reload to show updated location
@@ -623,6 +613,270 @@ class _MapsPageState extends State<MapsPage> {
     }
   }
 
+  // Enhanced navigation functionality
+  Future<void> _getDirections(Location location) async {
+    if (_currentPosition == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Current location not available. Please enable GPS.'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    await _showNavigationOptions(location);
+  }
+
+  Future<void> _showNavigationOptions(Location location) async {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey[300],
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              'Get Directions to ${location.name}',
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 20),
+
+            // Google Maps option
+            ListTile(
+              leading: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.green[100],
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(Icons.map, color: Colors.green),
+              ),
+              title: const Text('Google Maps'),
+              subtitle: const Text('Navigate with Google Maps'),
+              onTap: () {
+                Navigator.pop(context);
+                _openGoogleMaps(location);
+              },
+            ),
+
+            // Apple Maps option (iOS only)
+            if (Platform.isIOS)
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.blue[100],
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(Icons.map_outlined, color: Colors.blue),
+                ),
+                title: const Text('Apple Maps'),
+                subtitle: const Text('Navigate with Apple Maps'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _openAppleMaps(location);
+                },
+              ),
+
+            // Waze option
+            ListTile(
+              leading: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.orange[100],
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(Icons.navigation, color: Colors.orange),
+              ),
+              title: const Text('Waze'),
+              subtitle: const Text('Navigate with Waze'),
+              onTap: () {
+                Navigator.pop(context);
+                _openWaze(location);
+              },
+            ),
+
+            // Generic maps option
+            ListTile(
+              leading: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.purple[100],
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(Icons.open_in_new, color: Colors.purple),
+              ),
+              title: const Text('Other Maps App'),
+              subtitle: const Text('Open with default maps app'),
+              onTap: () {
+                Navigator.pop(context);
+                _openDefaultMaps(location);
+              },
+            ),
+
+            const SizedBox(height: 10),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openGoogleMaps(Location location) async {
+    final url = Platform.isIOS
+        ? 'comgooglemaps://?saddr=${_currentPosition!.latitude},${_currentPosition!.longitude}&daddr=${location.latitude},${location.longitude}&directionsmode=driving'
+        : 'google.navigation:q=${location.latitude},${location.longitude}&mode=d';
+
+    final fallbackUrl =
+        'https://www.google.com/maps/dir/?api=1&origin=${_currentPosition!.latitude},${_currentPosition!.longitude}&destination=${location.latitude},${location.longitude}&travelmode=driving';
+
+    try {
+      bool launched = await launchUrl(
+        Uri.parse(url),
+        mode: LaunchMode.externalApplication,
+      );
+
+      if (!launched) {
+        await launchUrl(
+          Uri.parse(fallbackUrl),
+          mode: LaunchMode.externalApplication,
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Could not open Google Maps: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  Future<void> _openAppleMaps(Location location) async {
+    final url =
+        'http://maps.apple.com/?saddr=${_currentPosition!.latitude},${_currentPosition!.longitude}&daddr=${location.latitude},${location.longitude}&dirflg=d';
+
+    try {
+      await launchUrl(
+        Uri.parse(url),
+        mode: LaunchMode.externalApplication,
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Could not open Apple Maps: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  Future<void> _openWaze(Location location) async {
+    final url =
+        'waze://?ll=${location.latitude},${location.longitude}&navigate=yes';
+    final fallbackUrl =
+        'https://waze.com/ul?ll=${location.latitude},${location.longitude}&navigate=yes';
+
+    try {
+      bool launched = await launchUrl(
+        Uri.parse(url),
+        mode: LaunchMode.externalApplication,
+      );
+
+      if (!launched) {
+        await launchUrl(
+          Uri.parse(fallbackUrl),
+          mode: LaunchMode.externalApplication,
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Could not open Waze: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  Future<void> _openDefaultMaps(Location location) async {
+    final url = Platform.isIOS
+        ? 'http://maps.apple.com/?q=${location.latitude},${location.longitude}'
+        : 'geo:${location.latitude},${location.longitude}?q=${location.latitude},${location.longitude}(${Uri.encodeComponent(location.name)})';
+
+    try {
+      await launchUrl(
+        Uri.parse(url),
+        mode: LaunchMode.externalApplication,
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Could not open maps: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  Future<void> _callLocation(Location location) async {
+    final url = 'tel:${location.phoneNumber}';
+
+    try {
+      if (await canLaunchUrl(Uri.parse(url))) {
+        await launchUrl(Uri.parse(url));
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Could not make phone call'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error making phone call: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  // Calculate distance between current location and target location
+  String _calculateDistance(Location location) {
+    if (_currentPosition == null) return 'N/A';
+
+    double distanceInMeters = Geolocator.distanceBetween(
+      _currentPosition!.latitude,
+      _currentPosition!.longitude,
+      location.latitude,
+      location.longitude,
+    );
+
+    if (distanceInMeters < 1000) {
+      return '${distanceInMeters.round()} m';
+    } else {
+      return '${(distanceInMeters / 1000).toStringAsFixed(1)} km';
+    }
+  }
+
   Widget _buildLocationCard(Location location) {
     return Card(
       elevation: 4,
@@ -646,14 +900,23 @@ class _MapsPageState extends State<MapsPage> {
                         ),
                       ),
                       const SizedBox(height: 4),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.green[100],
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          _calculateDistance(location),
+                          style: TextStyle(
+                            color: Colors.green[800],
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
                     ],
-                  ),
-                ),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(12),
                   ),
                 ),
               ],
@@ -663,8 +926,11 @@ class _MapsPageState extends State<MapsPage> {
               children: [
                 Icon(Icons.star, color: Colors.amber, size: 20),
                 const SizedBox(width: 4),
+                const Text('4.5'),
                 const SizedBox(width: 16),
                 Icon(Icons.attach_money, color: Colors.green, size: 20),
+                const SizedBox(width: 4),
+                const Text('RM 10-20'),
               ],
             ),
             const SizedBox(height: 12),
@@ -685,6 +951,7 @@ class _MapsPageState extends State<MapsPage> {
               children: [
                 Icon(Icons.access_time, color: Colors.blue, size: 20),
                 const SizedBox(width: 4),
+                const Text('9:00 AM - 10:00 PM'),
               ],
             ),
             const SizedBox(height: 8),
@@ -751,22 +1018,11 @@ class _MapsPageState extends State<MapsPage> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => LocationDetailPage(location: location),
+        builder: (context) => LocationDetailPage(
+          location: location,
+          currentPosition: _currentPosition,
+        ),
       ),
-    );
-  }
-
-  void _getDirections(Location location) {
-    // Implement directions functionality using url_launcher
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Getting directions to ${location.name}...')),
-    );
-  }
-
-  void _callLocation(Location location) {
-    // Implement call functionality using url_launcher
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Calling ${location.name}...')),
     );
   }
 
@@ -800,7 +1056,7 @@ class _MapsPageState extends State<MapsPage> {
         backgroundColor: Colors.white,
         elevation: 0,
         title: Text(
-          _userRole == 'Restaurant Owner' ? 'My Restaurant' : 'Restaurant Map',
+          _userRole == 'Restaurant Owner' ? 'My Restaurants' : 'Restaurant Map',
           style: const TextStyle(
             color: Colors.black,
             fontWeight: FontWeight.bold,
@@ -811,7 +1067,7 @@ class _MapsPageState extends State<MapsPage> {
             IconButton(
               icon: const Icon(Icons.add_location, color: Colors.black),
               onPressed: () => _startLocationSetting(null),
-              tooltip: 'Add location location',
+              tooltip: 'Add restaurant location',
             ),
           IconButton(
             icon: const Icon(Icons.my_location, color: Colors.black),
@@ -856,10 +1112,10 @@ class _MapsPageState extends State<MapsPage> {
                   myLocationButtonEnabled: false,
                   compassEnabled: true,
                   mapToolbarEnabled: false,
-                  zoomControlsEnabled: false, // We will add custom controls
+                  zoomControlsEnabled: false,
                 ),
 
-                // Location setting controls for location owners
+                // Location setting controls for restaurant owners
                 if (_isSettingLocation)
                   Positioned(
                     top: 16,
@@ -995,23 +1251,7 @@ class _MapsPageState extends State<MapsPage> {
                               ),
                             ),
                             const SizedBox(width: 8),
-                            const Text('Open', style: TextStyle(fontSize: 12)),
-                          ],
-                        ),
-                        const SizedBox(height: 4),
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Container(
-                              width: 12,
-                              height: 12,
-                              decoration: const BoxDecoration(
-                                color: Colors.orange,
-                                shape: BoxShape.circle,
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            const Text('Closed',
+                            const Text('Restaurants',
                                 style: TextStyle(fontSize: 12)),
                           ],
                         ),
@@ -1028,7 +1268,8 @@ class _MapsPageState extends State<MapsPage> {
                               ),
                             ),
                             const SizedBox(width: 8),
-                            const Text('You', style: TextStyle(fontSize: 12)),
+                            const Text('Your Location',
+                                style: TextStyle(fontSize: 12)),
                           ],
                         ),
                         if (_isSettingLocation) ...[
@@ -1083,6 +1324,11 @@ class _MapsPageState extends State<MapsPage> {
                               color: Colors.deepPurple[100],
                               borderRadius: BorderRadius.circular(8),
                             ),
+                            child: const Icon(
+                              Icons.restaurant,
+                              color: Colors.deepPurple,
+                              size: 30,
+                            ),
                           ),
                           const SizedBox(width: 12),
                           Expanded(
@@ -1109,7 +1355,17 @@ class _MapsPageState extends State<MapsPage> {
                                   children: [
                                     Icon(Icons.star,
                                         color: Colors.amber, size: 16),
+                                    const SizedBox(width: 4),
+                                    const Text('4.5'),
                                     const SizedBox(width: 8),
+                                    Text(
+                                      _calculateDistance(_selectedLocation!),
+                                      style: TextStyle(
+                                        color: Colors.green[600],
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
                                   ],
                                 ),
                               ],
@@ -1207,11 +1463,213 @@ class _MapsPageState extends State<MapsPage> {
   }
 }
 
-// Separate page for detailed location view (for normal users)
+// Enhanced Location Detail Page with Navigation Features
 class LocationDetailPage extends StatelessWidget {
   final Location location;
+  final Position? currentPosition;
 
-  const LocationDetailPage({super.key, required this.location});
+  const LocationDetailPage({
+    super.key,
+    required this.location,
+    this.currentPosition,
+  });
+
+  String _calculateDistance() {
+    if (currentPosition == null) return 'N/A';
+
+    double distanceInMeters = Geolocator.distanceBetween(
+      currentPosition!.latitude,
+      currentPosition!.longitude,
+      location.latitude,
+      location.longitude,
+    );
+
+    if (distanceInMeters < 1000) {
+      return '${distanceInMeters.round()} m';
+    } else {
+      return '${(distanceInMeters / 1000).toStringAsFixed(1)} km';
+    }
+  }
+
+  Future<void> _getDirections(BuildContext context) async {
+    if (currentPosition == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Current location not available. Please enable GPS.'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    await _showNavigationOptions(context);
+  }
+
+  Future<void> _showNavigationOptions(BuildContext context) async {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey[300],
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              'Get Directions to ${location.name}',
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 20),
+
+            // Google Maps option
+            ListTile(
+              leading: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.green[100],
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(Icons.map, color: Colors.green),
+              ),
+              title: const Text('Google Maps'),
+              subtitle: const Text('Navigate with Google Maps'),
+              onTap: () {
+                Navigator.pop(context);
+                _openGoogleMaps();
+              },
+            ),
+
+            // Apple Maps option (iOS only)
+            if (Platform.isIOS)
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.blue[100],
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(Icons.map_outlined, color: Colors.blue),
+                ),
+                title: const Text('Apple Maps'),
+                subtitle: const Text('Navigate with Apple Maps'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _openAppleMaps();
+                },
+              ),
+
+            // Waze option
+            ListTile(
+              leading: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.orange[100],
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(Icons.navigation, color: Colors.orange),
+              ),
+              title: const Text('Waze'),
+              subtitle: const Text('Navigate with Waze'),
+              onTap: () {
+                Navigator.pop(context);
+                _openWaze();
+              },
+            ),
+
+            const SizedBox(height: 10),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openGoogleMaps() async {
+    final url = Platform.isIOS
+        ? 'comgooglemaps://?saddr=${currentPosition!.latitude},${currentPosition!.longitude}&daddr=${location.latitude},${location.longitude}&directionsmode=driving'
+        : 'google.navigation:q=${location.latitude},${location.longitude}&mode=d';
+
+    final fallbackUrl =
+        'https://www.google.com/maps/dir/?api=1&origin=${currentPosition!.latitude},${currentPosition!.longitude}&destination=${location.latitude},${location.longitude}&travelmode=driving';
+
+    try {
+      bool launched = await launchUrl(
+        Uri.parse(url),
+        mode: LaunchMode.externalApplication,
+      );
+
+      if (!launched) {
+        await launchUrl(
+          Uri.parse(fallbackUrl),
+          mode: LaunchMode.externalApplication,
+        );
+      }
+    } catch (e) {
+      print('Could not open Google Maps: $e');
+    }
+  }
+
+  Future<void> _openAppleMaps() async {
+    final url =
+        'http://maps.apple.com/?saddr=${currentPosition!.latitude},${currentPosition!.longitude}&daddr=${location.latitude},${location.longitude}&dirflg=d';
+
+    try {
+      await launchUrl(
+        Uri.parse(url),
+        mode: LaunchMode.externalApplication,
+      );
+    } catch (e) {
+      print('Could not open Apple Maps: $e');
+    }
+  }
+
+  Future<void> _openWaze() async {
+    final url =
+        'waze://?ll=${location.latitude},${location.longitude}&navigate=yes';
+    final fallbackUrl =
+        'https://waze.com/ul?ll=${location.latitude},${location.longitude}&navigate=yes';
+
+    try {
+      bool launched = await launchUrl(
+        Uri.parse(url),
+        mode: LaunchMode.externalApplication,
+      );
+
+      if (!launched) {
+        await launchUrl(
+          Uri.parse(fallbackUrl),
+          mode: LaunchMode.externalApplication,
+        );
+      }
+    } catch (e) {
+      print('Could not open Waze: $e');
+    }
+  }
+
+  Future<void> _callLocation() async {
+    final url = 'tel:${location.phoneNumber}';
+
+    try {
+      if (await canLaunchUrl(Uri.parse(url))) {
+        await launchUrl(Uri.parse(url));
+      }
+    } catch (e) {
+      print('Error making phone call: $e');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -1233,6 +1691,11 @@ class LocationDetailPage extends StatelessWidget {
               decoration: BoxDecoration(
                 color: Colors.grey[300],
                 borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(
+                Icons.restaurant,
+                size: 80,
+                color: Colors.grey,
               ),
             ),
             const SizedBox(height: 16),
@@ -1260,19 +1723,29 @@ class LocationDetailPage extends StatelessWidget {
                           padding: const EdgeInsets.symmetric(
                               horizontal: 12, vertical: 6),
                           decoration: BoxDecoration(
+                            color: Colors.green[100],
                             borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(
+                            _calculateDistance(),
+                            style: TextStyle(
+                              color: Colors.green[800],
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
                       ],
                     ),
                     const SizedBox(height: 8),
-                    const SizedBox(height: 16),
                     Row(
                       children: [
                         Icon(Icons.star, color: Colors.amber, size: 24),
                         const SizedBox(width: 4),
+                        const Text('4.5 (123 reviews)'),
                         const SizedBox(width: 16),
                         Icon(Icons.attach_money, color: Colors.green, size: 24),
+                        const SizedBox(width: 4),
+                        const Text('RM 10-20'),
                       ],
                     ),
                   ],
@@ -1325,6 +1798,10 @@ class LocationDetailPage extends StatelessWidget {
                       children: [
                         Icon(Icons.access_time, color: Colors.blue, size: 20),
                         const SizedBox(width: 8),
+                        const Text(
+                          '9:00 AM - 10:00 PM',
+                          style: TextStyle(fontSize: 16),
+                        ),
                       ],
                     ),
                   ],
@@ -1339,9 +1816,7 @@ class LocationDetailPage extends StatelessWidget {
               children: [
                 Expanded(
                   child: ElevatedButton.icon(
-                    onPressed: () {
-                      // Implement directions
-                    },
+                    onPressed: () => _getDirections(context),
                     icon: const Icon(Icons.directions),
                     label: const Text('Get Directions'),
                     style: ElevatedButton.styleFrom(
@@ -1354,9 +1829,7 @@ class LocationDetailPage extends StatelessWidget {
                 const SizedBox(width: 12),
                 Expanded(
                   child: ElevatedButton.icon(
-                    onPressed: () {
-                      // Implement call
-                    },
+                    onPressed: _callLocation,
                     icon: const Icon(Icons.phone),
                     label: const Text('Call Now'),
                     style: ElevatedButton.styleFrom(
